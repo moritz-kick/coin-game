@@ -1,4 +1,4 @@
-# Coin Game
+# Patrik's Coin Game
 
 This repository contains two main folders: `coin-game-backend` and `coin-game-frontend`. The backend is a Node.js Express app, and the frontend is a React Vite app. This README will guide you through setting up and running the app locally.
 

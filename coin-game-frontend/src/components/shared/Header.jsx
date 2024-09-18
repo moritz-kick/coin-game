@@ -18,7 +18,7 @@ export default function Header() {
     <header className="bg-primary text-primary-foreground p-4">
       <nav className="container mx-auto flex justify-between items-center">
         <Link to="/" className="text-2xl font-bold">
-          Patrick Coin Game
+          Patrik's Coin Game
         </Link>
         <div className="space-x-4">
           {user && (

@@ -11,7 +11,7 @@ export const API = () => {
   const token = localStorage.getItem("token");
   if (token) {
     return axios.create({
-      baseURL: "http://localhost:5000",
+      baseURL: "http://localhost:5001",
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -19,7 +19,7 @@ export const API = () => {
   }
 
   return axios.create({
-    baseURL: "http://localhost:5000",
+    baseURL: "http://localhost:5001",
   });
 };
 
