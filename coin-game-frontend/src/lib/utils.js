@@ -11,7 +11,7 @@ export const API = () => {
   const token = localStorage.getItem("token");
   if (token) {
     return axios.create({
-      baseURL: "http://localhost:5001",
+      baseURL: import.meta.env.VITE_BACKEND_URL,
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -19,7 +19,7 @@ export const API = () => {
   }
 
   return axios.create({
-    baseURL: "http://localhost:5001",
+    baseURL: import.meta.env.VITE_BACKEND_URL,
   });
 };
 
