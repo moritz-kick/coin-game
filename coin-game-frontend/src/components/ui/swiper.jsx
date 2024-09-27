@@ -4,7 +4,7 @@ import 'swiper/css';
 import 'swiper/css/autoplay';
 import { Autoplay } from 'swiper/modules';
 
-const ImageSwiper = ({ images = [], autoplay = true, delay = 4000 }) => {
+const ImageSwiper = ({ images = [], autoplay = true, delay = 4000, speed = 300 }) => {
   return (
     <Swiper
       spaceBetween={50}
@@ -12,6 +12,7 @@ const ImageSwiper = ({ images = [], autoplay = true, delay = 4000 }) => {
       autoplay={autoplay ? { delay: delay } : false}
       modules={[Autoplay]}
       loop={true}
+      speed={speed}
     >
       {images.map((image, index) => (
         <SwiperSlide key={index}>

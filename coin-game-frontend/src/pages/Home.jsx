@@ -137,7 +137,7 @@ export default function Home() {
         </CardHeader>
         <CardContent>
           <div className="p-4">
-            <ImageSwiper images={images} autoplay={true} delay={3000} />
+            <ImageSwiper images={images} autoplay={true} delay={5000} speed={1000} />
           </div>
           <Button asChild variant="outline">
             <Link to="/rules">Rules</Link>
