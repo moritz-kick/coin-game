@@ -138,8 +138,10 @@ export default function Home() {
           <CardTitle>Game Rules</CardTitle>
         </CardHeader>
         <CardContent>
-          <ImageSwiper images={images} autoplay={true} delay={3000} />
-          <Button  asChild variant="outline">
+          <div className="p-4">
+            <ImageSwiper images={images} autoplay={true} delay={3000} />
+          </div>
+          <Button asChild variant="outline">
             <Link to="/rules">Rules</Link>
           </Button>
           <p className="mt-2">
