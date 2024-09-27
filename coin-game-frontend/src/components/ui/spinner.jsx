@@ -1,34 +1,35 @@
 import * as React from "react";
-import { Spinner as RadixSpinner } from "@radix-ui/themes";
+import { Slot } from "@radix-ui/react-slot";
 import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const spinnerVariants = cva(
-  "inline-block rounded-full border-4 animate-spin",
+  "inline-block animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]",
   {
     variants: {
       size: {
+        default: "w-5 h-5",
         sm: "w-4 h-4",
-        md: "w-8 h-8",
-        lg: "w-12 h-12",
+        lg: "w-8 h-8",
       },
       color: {
-        primary: "border-t-primary",
-        secondary: "border-t-secondary",
-        accent: "border-t-accent",
+        default: "text-primary",
+        secondary: "text-secondary",
+        destructive: "text-destructive",
       },
     },
     defaultVariants: {
-      size: "md",
-      color: "primary",
+      size: "default",
+      color: "default",
     },
   }
 );
 
 const Spinner = React.forwardRef(
-  ({ className, size, color, ...props }, ref) => {
+  ({ className, size, color, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : "div";
     return (
-      <RadixSpinner
+      <Comp
         className={cn(spinnerVariants({ size, color, className }))}
         ref={ref}
         {...props}
