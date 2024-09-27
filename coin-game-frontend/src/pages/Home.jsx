@@ -73,8 +73,8 @@ export default function Home() {
         </CardHeader>
         <CardContent>
           <p>
-            Patrik's Coin Game is a two-player game where <mark>one player hides coins</mark>
-            and <mark>the other tries to guess</mark> the number.
+            Patrik's Coin Game is a two-player game where <strong>one player hides coins</strong>
+            and <strong>the other tries to guess</strong> the number.
           </p>
           <div className="mt-4 space-x-4">
             {/* AI Game Dialog */}
@@ -139,7 +139,7 @@ export default function Home() {
         </CardHeader>
         <CardContent>
           <ImageSwiper images={images} autoplay={true} delay={3000} />
-          <Button asChild>
+          <Button  asChild variant="outline">
             <Link to="/rules">Rules</Link>
           </Button>
           <p className="mt-2">
