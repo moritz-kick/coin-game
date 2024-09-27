@@ -16,11 +16,11 @@ export default function Header() {
 
   return (
     <header className="bg-primary text-primary-foreground p-4">
-      <nav className="container mx-auto flex justify-between items-center">
-        <Link to="/" className="text-2xl font-bold">
+      <nav className="container mx-auto flex flex-col sm:flex-row sm:justify-between items-center">
+        <Link to="/" className="text-xl sm:text-2xl font-bold mb-2 sm:mb-0">
           Patrik's Coin Game
         </Link>
-        <div className="space-x-4">
+        <div className="flex flex-wrap justify-center sm:justify-end items-center gap-2">
           {user && (
             <>
               <Button variant="ghost" asChild>
@@ -41,8 +41,8 @@ export default function Header() {
             <Link to="/about">About the Game</Link>
           </Button>
           {user ? (
-            <Button variant="secondary" asChild onClick={logout}>
-              <Link to="/">Logout</Link>
+            <Button variant="secondary" onClick={logout}>
+              Logout
             </Button>
           ) : (
             <Button variant="ghost" asChild>

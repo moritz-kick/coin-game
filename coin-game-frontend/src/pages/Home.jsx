@@ -19,6 +19,7 @@ import {
   DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import ImageSwiper from "@/components/ui/swiper";
 import { useAppContext } from "@/context/AppContext";
 import { toast } from "sonner";
 
@@ -59,6 +60,12 @@ export default function Home() {
     toast.success("Username updated successfully");
   };
 
+  const images = [
+    { src: "./images/placeholder1.png", alt: "Game Screenshot 1" },
+    { src: "./images/placeholder2.png", alt: "Game Screenshot 2" },
+    { src: "./images/placeholder3.png", alt: "Game Screenshot 3" },
+  ];
+
   return (
     <div className="space-y-8">
       <Card>
@@ -69,8 +76,7 @@ export default function Home() {
         <CardContent>
           <p>
             Patrik's Coin Game is a two-player game where one player hides coins
-            and the other tries to guess the number. It's a game of strategy and
-            a bit of luck!
+            and the other tries to guess the number.
           </p>
           <div className="mt-4 space-x-4">
             {/* AI Game Dialog */}
@@ -134,29 +140,17 @@ export default function Home() {
           <CardTitle>Game Rules</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div>
-              <img src="./images/placeholder1.png" alt="Game Screenshot 1" />
-              <p>Explanation for Screenshot 1</p>
-            </div>
-            <div>
-              <img src="./images/placeholder2.png" alt="Game Screenshot 2" />
-              <p>Explanation for Screenshot 2</p>
-            </div>
-            <div>
-              <img src="./images/placeholder3.png" alt="Game Screenshot 3" />
-              <p>Explanation for Screenshot 3</p>
-            </div>
-          </div>
+          <Rules />
+        </CardContent>
+      </Card>
 
-          <details className="mt-4">
-            <summary className="cursor-pointer">
-              Read More &amp; Watch Tutorial
-            </summary>
-            <div className="mt-2">
-              <Rules />
-            </div>
-          </details>
+      {/* Game Screenshots */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Game Screenshots</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ImageSwiper images={images} autoplay={true} delay={3000} />
         </CardContent>
       </Card>
     </div>

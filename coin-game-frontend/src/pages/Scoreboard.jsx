@@ -78,7 +78,7 @@ export default function Scoreboard() {
         <CardTitle className="text-2xl font-bold">Scoreboard</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center gap-5 mb-4">
+        <div className="flex flex-wrap items-center gap-2 mb-4">
           <Button
             onClick={() => setScoreBoardType("all")}
             variant={scoreBoardType === "all" ? "default" : "outline"}
@@ -97,7 +97,6 @@ export default function Scoreboard() {
           >
             Guessers
           </Button>
-          {/* New Tabs for AI modes */}
           <Button
             onClick={() => setScoreBoardType("ai-easy")}
             variant={scoreBoardType === "ai-easy" ? "default" : "outline"}
