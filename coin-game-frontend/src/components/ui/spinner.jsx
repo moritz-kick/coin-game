@@ -1,8 +1,7 @@
 import * as React from "react";
-import { Slot } from "@radix-ui/react-slot";
+import { Spinner as RadixSpinner } from "@radix-ui/themes";
 import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import * as SpinnerPrimitive from "@radix-ui/react-spinner";
 
 const spinnerVariants = cva(
   "inline-block rounded-full border-4 animate-spin",
@@ -27,18 +26,13 @@ const spinnerVariants = cva(
 );
 
 const Spinner = React.forwardRef(
-  ({ className, size, color, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : SpinnerPrimitive.Root;
+  ({ className, size, color, ...props }, ref) => {
     return (
-      <Comp
+      <RadixSpinner
         className={cn(spinnerVariants({ size, color, className }))}
         ref={ref}
         {...props}
-        role="status"
-      >
-        <SpinnerPrimitive.Circle />
-        <span className="sr-only">Loading...</span>
-      </Comp>
+      />
     );
   }
 );
