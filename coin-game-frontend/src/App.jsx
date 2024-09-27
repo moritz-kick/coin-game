@@ -83,17 +83,23 @@ function AppInitializer() {
     if (token) {
       (async () => {
         try {
+          console.log("Token found, attempting to fetch user...");
           const response = await API().get("/user/get-user", {
             headers: {
               Authorization: `Bearer ${token}`,
             },
           });
+          console.log("User data fetched:", response.data.user);
           setUser(response.data.user);
         } catch (error) {
-          console.error("Error fetching user:", error);
+          console.error("Error fetching user:", error.response?.data || error.message);
           localStorage.removeItem("token");
+          console.log("Token removed, redirecting to login...");
+          window.location.href = "/login"; // Redirect to login if token is invalid
         }
       })();
+    } else {
+      console.log("No token found in localStorage.");
     }
 
     initSocket();
