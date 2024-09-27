@@ -73,7 +73,7 @@ export default function Home() {
         </CardHeader>
         <CardContent>
           <p>
-            Patrik's Coin Game is a two-player game where one player <strong>hides coins</strong> 
+            Patrik's Coin Game is a two-player game where one player <strong>hides coins </strong><br>
             and the other <strong>tries to guess</strong> the number.
           </p>
           <div className="mt-4 space-x-4">
