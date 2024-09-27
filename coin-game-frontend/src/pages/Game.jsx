@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { Button } from "../components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardHeader,
   CardTitle,
   CardContent,
-} from "../components/ui/card";
-import { Progress } from "../components/ui/progress";
+} from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { useNavigate, useParams } from "react-router-dom";
 import { API } from "@/lib/utils";
 import { useAppContext } from "@/context/AppContext";

@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Card,
   CardHeader,
   CardTitle,
   CardContent,
-} from "../components/ui/card";
+} from "@/components/ui/card";
 import { API, showErrorToast } from "@/lib/utils";
 import useToken from "@/hooks/useToken";
 

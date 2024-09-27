@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Button, Input } from "@/components/ui";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import Rules from "./Rules";
 import {
   Card,
@@ -18,7 +19,6 @@ import {
   DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { getSocket } from "@/lib/socket";
 import { useAppContext } from "@/context/AppContext";
 import { toast } from "sonner";
 
