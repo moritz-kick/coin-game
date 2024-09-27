@@ -140,11 +140,9 @@ export default function Home() {
             <ImageSwiper images={images} autoplay={true} delay={5000} speed={1000} />
           </div>
           <Button asChild variant="outline">
-            <Link to="/rules">Rules</Link>
+            <Link to="/rules">View Game Rules</Link>
           </Button>
-          <p className="mt-2">
-            Check out the detailed rules with a short video on the next page.
-          </p>
+          <CardDescription>Check out the detailed rules with a short video</CardDescription>
         </CardContent>
       </Card>
     </div>
