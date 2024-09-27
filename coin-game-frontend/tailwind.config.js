@@ -4,6 +4,16 @@ export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
+      fontSize: {
+        'xs': ['0.75rem', '1rem'], // Tailwind default for extra small
+        'sm': ['0.875rem', '1.25rem'], // Tailwind default for small
+        'base': ['1rem', '1.5rem'], // Tailwind default for base
+        'lg': ['1.125rem', '1.75rem'], // Tailwind default for large
+        'xl': ['1.25rem', '1.75rem'], // Tailwind default for extra large
+        '2xl': ['1.5rem', '2rem'], // Tailwind default for 2x large
+        '3xl': ['1.875rem', '2.25rem'], // Tailwind default for 3x large
+        '4xl': ['2.25rem', '2.5rem'], // Tailwind default for 4x large
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
