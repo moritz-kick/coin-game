@@ -205,7 +205,7 @@ io.on("connection", (socket) => {
       { new: true }
     );
 
-    console.log("User disconnected");
+    console.log(`User ${disconnectedUser?.username || 'Unknown'} disconnected`);
   });
 });
 

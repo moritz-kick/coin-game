@@ -8,6 +8,7 @@ import {
   CardTitle,
   CardContent,
 } from "@/components/ui/card";
+import { Spinner } from "@/components/ui/spinner"; // Import the spinner
 import { API, showErrorToast } from "@/lib/utils";
 import useToken from "@/hooks/useToken";
 
@@ -23,6 +24,7 @@ const getOrCreateDeviceId = () => {
 
 export default function Login() {
   const [username, setUsername] = useState("");
+  const [loading, setLoading] = useState(false); // State for loading spinner
   const navigate = useNavigate();
   const { updateToken } = useToken();
 
@@ -33,10 +35,10 @@ export default function Login() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setLoading(true); // Start spinner
 
     try {
       const deviceId = getOrCreateDeviceId();
-
       const { data } = await API().post("/user/login", {
         username: username,
         deviceId: deviceId,
@@ -48,6 +50,8 @@ export default function Login() {
       }
     } catch (error) {
       showErrorToast(error);
+    } finally {
+      setLoading(false); // Stop spinner
     }
   };
 
@@ -64,9 +68,10 @@ export default function Login() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
+            disabled={loading} // Disable input during loading
           />
-          <Button type="submit" className="w-full">
-            Login
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? <Spinner /> : "Login"}
           </Button>
         </form>
       </CardContent>
