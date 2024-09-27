@@ -15,12 +15,12 @@ export default function Header() {
   };
 
   return (
-      <header className="bg-primary text-primary-foreground p-4 md:p-4 sm:p-2">
+    <header className="bg-primary text-primary-foreground p-4">
       <nav className="container mx-auto flex justify-between items-center">
-        <Link to="/" className="text-2xl sm:text-xl font-bold">
+        <Link to="/" className="text-2xl font-bold">
           Patrik's Coin Game
         </Link>
-        <div className="space-x-4 sm:space-x-2 flex flex-wrap">
+        <div className="space-x-4">
           {user && (
             <>
               <Button variant="ghost" asChild>

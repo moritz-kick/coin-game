@@ -78,43 +78,40 @@ export default function Scoreboard() {
         <CardTitle className="text-2xl font-bold">Scoreboard</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-wrap items-center gap-2 mb-4">
+        <div className="flex items-center gap-5 mb-4">
           <Button
             onClick={() => setScoreBoardType("all")}
             variant={scoreBoardType === "all" ? "default" : "outline"}
-            className="text-sm sm:text-xs"
           >
             All
           </Button>
           <Button
             onClick={() => setScoreBoardType("coin-players")}
             variant={scoreBoardType === "coin-players" ? "default" : "outline"}
-            className="text-sm sm:text-xs"
           >
             Coin Players
           </Button>
           <Button
             onClick={() => setScoreBoardType("estimators")}
             variant={scoreBoardType === "estimators" ? "default" : "outline"}
-            className="text-sm sm:text-xs"
           >
             Guessers
           </Button>
+          {/* New Tabs for AI modes */}
           <Button
             onClick={() => setScoreBoardType("ai-easy")}
             variant={scoreBoardType === "ai-easy" ? "default" : "outline"}
-            className="text-sm sm:text-xs"
           >
             Against AI (Easy)
           </Button>
           <Button
             onClick={() => setScoreBoardType("ai-hard")}
             variant={scoreBoardType === "ai-hard" ? "default" : "outline"}
-            className="text-sm sm:text-xs"
           >
             Against AI (Hard)
           </Button>
         </div>
+
         <div className="flex items-center space-x-2 mb-4">
           <Input
             type="text"

@@ -71,6 +71,51 @@ export default function Rules() {
             </section>
           </CardContent>
         </div>
+
+        {/* Video Section */}
+        <div className="lg:w-1/3 p-4">
+          <video
+            ref={videoRef}
+            src="/videos/game-demo.mp4"
+            controls
+            className="w-full h-auto"
+          >
+            Your browser does not support the video tag.
+          </video>
+          {/* Speed Control Buttons */}
+          <div className="flex justify-center space-x-4 mt-4">
+            <button
+              onClick={() => handleSpeedChange(0.5)}
+              className="px-4 py-2 bg-blue-500 text-white rounded-md"
+            >
+              0.5x
+            </button>
+            <button
+              onClick={() => handleSpeedChange(1)}
+              className="px-4 py-2 bg-blue-500 text-white rounded-md"
+            >
+              1x
+            </button>
+            <button
+              onClick={() => handleSpeedChange(1.5)}
+              className="px-4 py-2 bg-blue-500 text-white rounded-md"
+            >
+              1.5x
+            </button>
+            <button
+              onClick={() => handleSpeedChange(2)}
+              className="px-4 py-2 bg-blue-500 text-white rounded-md"
+            >
+              2x
+            </button>
+          </div>
+
+          {/* Caption */}
+          <p className="mt-4 text-center text-sm italic">
+            Yes, folks, you're watching the legendary Patrik himself explain his genius game. 
+            Don't blink, or you might miss his mind-blowing strategies ;)
+          </p>
+        </div>
       </Card>
     </div>
   );
