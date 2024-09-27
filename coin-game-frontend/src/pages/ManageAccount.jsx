@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Button, Input } from "@/components/ui";
-import { useAppContext } from "@/context/AppContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useAppContext } from "@/context/AppContext";
 import { toast } from "sonner";
 
 export default function ManageAccount() {
