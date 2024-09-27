@@ -18,8 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 
 export default function WaitingRoom() {
   const [users, setUsers] = useState([]);
@@ -31,10 +30,8 @@ export default function WaitingRoom() {
 
   const socket = getSocket();
 
-  const [selectedLevels, setSelectedLevels] = useState("1");
+  const [selectedMatches, setSelectedMatches] = useState(1);
   const [isOpen, setIsOpen] = useState(false);
-
-  const levelOptions = ["1", "3", "5", "10"];
 
   useEffect(() => {
     fetchUsers();
@@ -60,7 +57,7 @@ export default function WaitingRoom() {
     socket.emit("challengeUser", {
       challengerId: loggedInUser._id,
       challengedId,
-      levels: selectedLevels,
+      matches: selectedMatches,
     });
     setIsOpen(false);
   };
@@ -84,23 +81,25 @@ export default function WaitingRoom() {
     return () => socket?.off("updateWaitingRoom");
   }, [socket, loggedInUser]);
 
-  const handleAcceptChallenge = (challengerId, challengedId, levels) => {
+  const handleAcceptChallenge = (challengerId, challengedId, matches) => {
     socket?.emit("acceptChallenge", {
       challengerId,
       challengedId,
-      levels,
+      matches,
     });
   };
 
   useEffect(() => {
-    socket?.on("challengeReceived", ({ challenger, challenged, levels }) => {
+    socket?.on("challengeReceived", ({ challenger, challenged, matches }) => {
       toast(
-        `${challenger?.username} has challenged you for a ${levels} levels game`,
+        `${challenger?.username} has challenged you for a ${matches} ${
+          matches > 1 ? "matches" : "match"
+        } game`,
         {
           action: {
             label: "Accept",
             onClick: () =>
-              handleAcceptChallenge(challenger._id, challenged._id, levels),
+              handleAcceptChallenge(challenger._id, challenged._id, matches),
           },
         }
       );
@@ -162,31 +161,25 @@ export default function WaitingRoom() {
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[425px]">
                   <DialogHeader>
-                    <DialogTitle>Select Number of Levels</DialogTitle>
+                    <DialogTitle>Select Number of Matches</DialogTitle>
                   </DialogHeader>
-                  <RadioGroup
-                    value={selectedLevels}
-                    onValueChange={setSelectedLevels}
-                    className="grid grid-cols-2 gap-4 pt-4"
-                  >
-                    {levelOptions.map((levels) => (
-                      <div key={levels}>
-                        <RadioGroupItem
-                          value={levels}
-                          id={`level-${levels}`}
-                          className="peer sr-only"
-                        />
-                        <Label
-                          htmlFor={`level-${levels}`}
-                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                        >
-                          {levels} {parseInt(levels) === 1 ? "Level" : "Levels"}
-                        </Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
+                  <div className="pt-4">
+                    <Slider
+                      min={1}
+                      max={10}
+                      step={1}
+                      value={selectedMatches}
+                      onChange={(value) => setSelectedMatches(value)}
+                    />
+                    <div className="text-center mt-2">
+                      Matches: {selectedMatches}
+                    </div>
+                  </div>
                   <DialogFooter className="mt-6">
-                    <Button variant="outline" onClick={() => setIsOpen(false)}>
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsOpen(false)}
+                    >
                       Cancel
                     </Button>
                     <Button onClick={() => handlePlayRequest(user._id)}>

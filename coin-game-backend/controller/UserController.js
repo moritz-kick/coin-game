@@ -6,26 +6,25 @@ const registerOrLoginUser = async (req, res) => {
   try {
     const { username, deviceId } = req.body;
 
-    const findUser = await User.findOne({
-      username,
+    let user = await User.findOne({
       deviceId,
     });
 
-    if (findUser) {
-      const token = jwt.sign({ id: findUser._id }, process.env.JWT_SECRET);
-      res.status(200).json({
-        token,
+    if (!user) {
+      user = new User({
+        username,
+        deviceId,
       });
+      await user.save();
+    } else {
+      // Update username if it has changed
+      if (user.username !== username) {
+        user.username = username;
+        await user.save();
+      }
     }
 
-    const newUser = new User({
-      username,
-      deviceId: deviceId + Math.random(),
-    });
-
-    await newUser.save();
-
-    const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET);
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
 
     res.status(200).json({
       token,
@@ -36,6 +35,7 @@ const registerOrLoginUser = async (req, res) => {
     });
   }
 };
+
 
 const getOnlineUsers = async (req, res) => {
   try {

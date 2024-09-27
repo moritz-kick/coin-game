@@ -20,6 +20,23 @@ const UserSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    // NEW FIELDS FOR AI STATS
+    aiEasyWins: {
+      type: Number,
+      default: 0,
+    },
+    aiEasyLosses: {
+      type: Number,
+      default: 0,
+    },
+    aiHardWins: {
+      type: Number,
+      default: 0,
+    },
+    aiHardLosses: {
+      type: Number,
+      default: 0,
+    },
     status: {
       type: String,
       default: "online",

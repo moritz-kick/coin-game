@@ -22,15 +22,23 @@ export default function Header() {
         </Link>
         <div className="space-x-4">
           {user && (
-            <Button variant="ghost" asChild>
-              <Link to="/waiting-room">Waiting Room</Link>
-            </Button>
+            <>
+              <Button variant="ghost" asChild>
+                <Link to="/waiting-room">Waiting Room</Link>
+              </Button>
+              <Button variant="ghost" asChild>
+                <Link to="/manage-account">Manage Account</Link>
+              </Button>
+            </>
           )}
           <Button variant="ghost" asChild>
             <Link to="/scoreboard">Scoreboard</Link>
           </Button>
           <Button variant="ghost" asChild>
             <Link to="/rules">Rules</Link>
+          </Button>
+          <Button variant="ghost" asChild>
+            <Link to="/about">About the Game</Link>
           </Button>
           {user ? (
             <Button variant="secondary" asChild onClick={logout}>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -9,26 +9,37 @@ import {
   CardContent,
 } from "../components/ui/card";
 import { API, showErrorToast } from "@/lib/utils";
-import axios from "axios";
-import { useAppContext } from "@/context/AppContext";
+import useToken from "@/hooks/useToken";
+
+// Utility function to get or create a unique device ID
+const getOrCreateDeviceId = () => {
+  let deviceId = localStorage.getItem("deviceId");
+  if (!deviceId) {
+    deviceId = crypto.randomUUID(); // Generate a UUID
+    localStorage.setItem("deviceId", deviceId);
+  }
+  return deviceId;
+};
 
 export default function Login() {
   const [username, setUsername] = useState("");
   const navigate = useNavigate();
+  const { updateToken } = useToken();
 
-  const { updateToken } = useAppContext();
+  useEffect(() => {
+    // Generate or get existing device ID when the component mounts
+    getOrCreateDeviceId();
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
 
     try {
-      const { data: IPDATA } = await axios.get(
-        "https://api.ipify.org/?format=json"
-      );
+      const deviceId = getOrCreateDeviceId();
 
       const { data } = await API().post("/user/login", {
         username: username,
-        deviceId: IPDATA.ip,
+        deviceId: deviceId,
       });
 
       if (data) {

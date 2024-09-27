@@ -39,13 +39,12 @@ io.on("connection", (socket) => {
 
   const socketId = socket.id;
 
+  // Handle user joining the waiting room
   socket.on("joinWaitingRoom", async (userId) => {
     socket.join("waitingRoom");
-
     socket.join(userId);
 
-    // Notify all clients in waiting room
-
+    // Update user status to online
     const updateUserStatus = await UserSchema.findByIdAndUpdate(
       userId,
       {
@@ -55,88 +54,90 @@ io.on("connection", (socket) => {
       { new: true }
     );
 
+    // Notify all clients in waiting room
     io.to("waitingRoom").emit("updateWaitingRoom", updateUserStatus);
   });
 
+  // Handle user leaving the game
   socket.on("userLeft", async ({ userId, gameId }) => {
-    // socket.leave("waitingRoom");
-
     await UserSchema.findByIdAndUpdate(
       userId,
       {
         status: "offline",
+        socketId: "",
       },
       { new: true }
     );
 
     const findedGame = await GameSchema.findById(gameId);
 
-    const winner =
-      findedGame.player1.toString() === userId
-        ? findedGame.player2
-        : findedGame.player1;
-    const loser =
-      findedGame.player1.toString() === userId
-        ? findedGame.player1
-        : findedGame.player2;
+    if (findedGame) {
+      const winner =
+        findedGame.player1.toString() === userId
+          ? findedGame.player2
+          : findedGame.player1;
+      const loser = userId;
 
-    await UserSchema.findByIdAndUpdate(
-      winner,
-      { $inc: { wins: 1 }, status: "online" },
-      { new: true }
-    );
+      await UserSchema.findByIdAndUpdate(
+        winner,
+        { $inc: { wins: 1 }, status: "online" },
+        { new: true }
+      );
 
-    await UserSchema.findByIdAndUpdate(
-      loser,
-      { $inc: { losses: 1 }, status: "online" },
-      { new: true }
-    );
+      await UserSchema.findByIdAndUpdate(
+        loser,
+        { $inc: { losses: 1 }, status: "offline" },
+        { new: true }
+      );
 
-    const updatedGame = await GameSchema.findByIdAndUpdate(findedGame._id, {
-      status: "aborted",
-      winner,
-    });
+      const updatedGame = await GameSchema.findByIdAndUpdate(findedGame._id, {
+        status: "aborted",
+        winner,
+      });
 
-    io.to(gameId).emit("gameAborted", updatedGame);
+      io.to(gameId).emit("gameAborted", updatedGame);
+    }
   });
 
-  socket.on("challengeUser", async ({ challengerId, challengedId, levels }) => {
+  // Handle challenge requests
+  socket.on("challengeUser", async ({ challengerId, challengedId, matches }) => {
     const challenger = await UserSchema.findById(challengerId);
     const challenged = await UserSchema.findById(challengedId);
 
-    io.to(challengedId).emit("challengeReceived", {
+    io.to(challenged.socketId).emit("challengeReceived", {
       challenger,
       challenged,
-      levels,
+      matches,
     });
   });
 
+  // Handle acceptance of challenge
   socket.on(
     "acceptChallenge",
-    async ({ challengerId, challengedId, levels }) => {
+    async ({ challengerId, challengedId, matches }) => {
       const findedPlayer1 = await UserSchema.findById(challengerId);
       const findedPlayer2 = await UserSchema.findById(challengedId);
 
       try {
+        // Randomly assign roles
+        const roles = ["coin-player", "estimator"];
+        const randomIndex = Math.floor(Math.random() * 2);
+        const player1Role = roles[randomIndex];
+        const player2Role = roles[1 - randomIndex];
+
         const game = await GameSchema.create({
           player1: findedPlayer1._id,
           player2: findedPlayer2._id,
-          player1Role:
-            findedPlayer1?.createdAt < findedPlayer2?.createdAt
-              ? "coin-player"
-              : "estimator",
-          player2Role:
-            findedPlayer1?.createdAt < findedPlayer2?.createdAt
-              ? "estimator"
-              : "coin-player",
-          levels: parseInt(levels),
+          player1Role: player1Role,
+          player2Role: player2Role,
+          matches: parseInt(matches),
         });
 
         const gameID = game._id.toString();
 
         socket.join(gameID);
-        io.to(challengerId).socketsJoin(gameID);
-        io.to(challengedId).socketsJoin(gameID);
+        io.to(findedPlayer1.socketId).socketsJoin(gameID);
+        io.to(findedPlayer2.socketId).socketsJoin(gameID);
 
         await UserSchema.findByIdAndUpdate(challengerId, {
           status: "in-game",
@@ -153,189 +154,45 @@ io.on("connection", (socket) => {
     }
   );
 
+  // Handle round submissions
   socket.on("submitRound", async ({ gameId, actionBy, selection }) => {
-    let updatedGame = null;
+    const game = await GameSchema.findById(gameId);
 
-    const findedGame = await GameSchema.findById(gameId);
+    if (!game) return;
 
     if (actionBy === "coin-player") {
-      updatedGame = await GameSchema.findByIdAndUpdate(
-        gameId,
-        {
-          coinSelections: [
-            ...findedGame.coinSelections,
-            {
-              round: findedGame.currentRound,
-              coins: +selection ?? 0,
-              level: findedGame.currentLevel,
-            },
-          ],
-        },
-        { new: true }
-      );
+      game.coinSelections.push({
+        round: game.currentRound,
+        coins: +selection ?? 0,
+        match: game.currentMatch,
+      });
     } else {
-      updatedGame = await GameSchema.findByIdAndUpdate(
-        gameId,
-        {
-          guesses: [
-            ...findedGame.guesses,
-            {
-              round: findedGame.currentRound,
-              guess: +selection ?? 0,
-              level: findedGame.currentLevel,
-            },
-          ],
-        },
-        { new: true }
-      );
+      game.guesses.push({
+        round: game.currentRound,
+        guess: +selection ?? 0,
+        match: game.currentMatch,
+      });
     }
 
-    io.to(gameId).emit("roundSubmitted", updatedGame);
-  });
+    await game.save();
 
-  socket.on("changeRound", async ({ gameId, level }) => {
-    const findedGame = await GameSchema.findById(gameId);
+    io.to(gameId).emit("roundSubmitted", game);
 
-    const findedPlayer1 = await UserSchema.findById(findedGame.player1);
-    const findedPlayer2 = await UserSchema.findById(findedGame.player2);
+    // Check if both players have submitted
+    const coinSelection = game.coinSelections.find(
+      (cs) => cs.round === game.currentRound && cs.match === game.currentMatch
+    );
+    const guess = game.guesses.find(
+      (g) => g.round === game.currentRound && g.match === game.currentMatch
+    );
 
-    // const isGuessCorrect = +guess === +coinSelections;
-
-    // Determine the winner
-    let levelWinner = null;
-    let incorrectGuesses = 0;
-
-    for (let i = 0; i < findedGame.guesses.length; i++) {
-      if (findedGame.guesses[i].level === findedGame.currentLevel) {
-        const currentGuess = findedGame.guesses[i].guess;
-        const currentSelection = findedGame.coinSelections[i].coins;
-
-        if (currentGuess !== currentSelection) {
-          incorrectGuesses += 1;
-        } else {
-          if (findedGame.player1Role === "coin-player") {
-            levelWinner = findedGame.player2;
-          } else {
-            levelWinner = findedGame.player1;
-          }
-
-          break;
-        }
-      }
-    }
-
-    const checkIncorrectGuesses = () => {
-      if (incorrectGuesses >= 3) {
-        return true;
-      }
-    };
-
-    if (checkIncorrectGuesses()) {
-      if (findedGame.player1Role === "coin-player") {
-        levelWinner = findedGame.player1;
-      } else {
-        levelWinner = findedGame.player2;
-      }
-    }
-
-    if (levelWinner) {
-      if (findedGame.currentLevel === findedGame.levels) {
-        const completeGame = await GameSchema.findByIdAndUpdate(
-          gameId,
-          {
-            status: "completed",
-            levelWinners: [
-              ...findedGame.levelWinners,
-              { level: findedGame.currentLevel, winner: levelWinner },
-            ],
-          },
-          { new: true }
-        );
-
-        const winnersArr = completeGame.levelWinners.map((winner) =>
-          winner.winner?.toString()
-        );
-
-        function findMostWinners(arr) {
-          const frequency = {}; // Object to store frequency of each string
-          let maxCount = 0; // Maximum occurrence count
-          let mostFrequent = ""; // String with the highest occurrence
-
-          for (const str of arr) {
-            // Count the occurrences of each string
-            frequency[str] = (frequency[str] || 0) + 1;
-
-            // Update the most frequent string and max count if needed
-            if (frequency[str] > maxCount) {
-              maxCount = frequency[str];
-              mostFrequent = str;
-            }
-          }
-
-          return mostFrequent;
-        }
-
-        const mostWinsInAGame = findMostWinners(winnersArr);
-
-        const updatedGame = await GameSchema.findByIdAndUpdate(
-          gameId,
-          {
-            winner: new mongoose.Types.ObjectId(mostWinsInAGame),
-          },
-          { new: true }
-        );
-
-        if (findedPlayer1._id.toString() === mostWinsInAGame) {
-          await UserSchema.findByIdAndUpdate(findedPlayer1._id, {
-            wins: findedPlayer1.wins + 1,
-            status: "online",
-          });
-          await UserSchema.findByIdAndUpdate(findedPlayer2._id, {
-            losses: findedPlayer2.losses + 1,
-            status: "online",
-          });
-        } else {
-          await UserSchema.findByIdAndUpdate(findedPlayer1._id, {
-            losses: findedPlayer1.losses + 1,
-            status: "online",
-          });
-          await UserSchema.findByIdAndUpdate(findedPlayer2._id, {
-            wins: findedPlayer2.wins + 1,
-            status: "online",
-          });
-        }
-
-        io.to(gameId).emit("gameCompleted", updatedGame);
-      } else {
-        const updatedGame = await GameSchema.findByIdAndUpdate(
-          gameId,
-          {
-            currentLevel: findedGame.currentLevel + 1,
-            levelWinners: [
-              ...findedGame.levelWinners,
-              { level: findedGame.currentLevel, winner: levelWinner },
-            ],
-            currentRound: 1,
-          },
-          { new: true }
-        );
-        io.to(gameId).emit("levelCompleted", updatedGame);
-      }
-    } else {
-      const updatedGameForRound = await GameSchema.findByIdAndUpdate(
-        gameId,
-        {
-          currentRound: findedGame.currentRound + 1,
-        },
-        { new: true }
-      );
-
-      io.to(gameId).emit("roundChanged", updatedGameForRound);
+    if (coinSelection && guess) {
+      // Process round outcome
+      await processRoundOutcome(game, io);
     }
   });
 
-  // socket.on("levelCom")
-
+  // Handle user disconnect
   socket.on("disconnect", async () => {
     const updateUserStatus = await UserSchema.findOneAndUpdate(
       {
@@ -351,5 +208,125 @@ io.on("connection", (socket) => {
     console.log("User disconnected");
   });
 });
+
+// Function to process round outcome
+const processRoundOutcome = async (game, io) => {
+  const currentRound = game.currentRound;
+  const currentMatch = game.currentMatch;
+
+  // Determine if the guess was correct
+  const coinSelection = game.coinSelections.find(
+    (cs) => cs.round === currentRound && cs.match === currentMatch
+  );
+  const guess = game.guesses.find(
+    (g) => g.round === currentRound && g.match === currentMatch
+  );
+
+  let roundWinner = null;
+
+  if (coinSelection.coins === guess.guess) {
+    // Estimator wins the round
+    if (game.player1Role === "estimator") {
+      game.player1Score += 1;
+    } else {
+      game.player2Score += 1;
+    }
+  } else {
+    // Coin player wins the round
+    if (game.player1Role === "coin-player") {
+      game.player1Score += 1;
+    } else {
+      game.player2Score += 1;
+    }
+  }
+
+  // Update current round
+  game.currentRound += 1;
+
+  // Check if match is over
+  if (game.currentRound > game.rounds) {
+    // Determine match winner
+    let matchWinner = null;
+
+    if (game.player1Score > game.player2Score) {
+      matchWinner = game.player1;
+    } else if (game.player2Score > game.player1Score) {
+      matchWinner = game.player2;
+    } else {
+      matchWinner = null; // Draw
+    }
+
+    game.matchWinners.push({
+      match: currentMatch,
+      winner: matchWinner,
+    });
+
+    // Reset scores for next match
+    game.player1Score = 0;
+    game.player2Score = 0;
+
+    // Swap roles
+    const tempRole = game.player1Role;
+    game.player1Role = game.player2Role;
+    game.player2Role = tempRole;
+
+    // Update current match
+    game.currentMatch += 1;
+    game.currentRound = 1;
+
+    // Check if game is over
+    if (game.currentMatch > game.matches) {
+      // Determine game winner
+      let player1Wins = game.matchWinners.filter(
+        (w) => w.winner && w.winner.toString() === game.player1.toString()
+      ).length;
+      let player2Wins = game.matchWinners.filter(
+        (w) => w.winner && w.winner.toString() === game.player2.toString()
+      ).length;
+
+      if (player1Wins > player2Wins) {
+        game.winner = game.player1;
+        await UserSchema.findByIdAndUpdate(game.player1, {
+          $inc: { wins: 1 },
+          status: "online",
+        });
+        await UserSchema.findByIdAndUpdate(game.player2, {
+          $inc: { losses: 1 },
+          status: "online",
+        });
+      } else if (player2Wins > player1Wins) {
+        game.winner = game.player2;
+        await UserSchema.findByIdAndUpdate(game.player2, {
+          $inc: { wins: 1 },
+          status: "online",
+        });
+        await UserSchema.findByIdAndUpdate(game.player1, {
+          $inc: { losses: 1 },
+          status: "online",
+        });
+      } else {
+        // It's a draw
+        game.winner = null;
+        await UserSchema.findByIdAndUpdate(game.player1, {
+          status: "online",
+        });
+        await UserSchema.findByIdAndUpdate(game.player2, {
+          status: "online",
+        });
+      }
+
+      game.status = "completed";
+      await game.save();
+
+      io.to(game._id.toString()).emit("gameCompleted", game);
+    } else {
+      await game.save();
+      io.to(game._id.toString()).emit("matchCompleted", game);
+    }
+  } else {
+    await game.save();
+    io.to(game._id.toString()).emit("roundChanged", game);
+  }
+};
 
 server.listen(5001, () => console.log("Server running on port 5001"));

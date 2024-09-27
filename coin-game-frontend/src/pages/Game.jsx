@@ -73,6 +73,14 @@ export default function Game() {
 
   const navigate = useNavigate();
 
+  const [selectedCoins, setSelectedCoins] = useState(null);
+  const [guess, setGuess] = useState(null);
+  const [submitted, setSubmitted] = useState(false);
+
+  const [validChoices, setValidChoices] = useState([0, 1, 2, 3, 4, 5]);
+
+  const { user } = useAppContext();
+
   useEffect(() => {
     if (!gameId) return;
 
@@ -89,13 +97,29 @@ export default function Game() {
     })();
   }, [gameId]);
 
-  const [selectedCoins, setSelectedCoins] = useState(null);
-  const [guess, setGuess] = useState(null);
-  const [submitted, setSubmitted] = useState(false);
+  // NEW CODE: Player scores
+  const [player1Score, setPlayer1Score] = useState(0);
+  const [player2Score, setPlayer2Score] = useState(0);
 
-  const [validChoices, setValidChoices] = useState([0, 1, 2, 3, 4, 5]);
-
-  const { user } = useAppContext();
+  useEffect(() => {
+    if (gameState && gameState.matchWinners) {
+      const player1Id = gameState.player1._id;
+      const player2Id = gameState.player2._id;
+      let p1Score = 0;
+      let p2Score = 0;
+      gameState.matchWinners.forEach((match) => {
+        if (match.winner === null) {
+          // Draw, do nothing
+        } else if (match.winner.toString() === player1Id.toString()) {
+          p1Score += 1;
+        } else if (match.winner.toString() === player2Id.toString()) {
+          p2Score += 1;
+        }
+      });
+      setPlayer1Score(p1Score);
+      setPlayer2Score(p2Score);
+    }
+  }, [gameState]);
 
   useEffect(() => {
     if (!gameState) return;
@@ -117,7 +141,11 @@ export default function Game() {
     if (gameState && gameState.currentRound > 1) {
       // Get last coin selection made by coin-player in the previous round
       const lastSelection =
-        gameState.coinSelections[gameState.coinSelections.length - 1]?.coins;
+        gameState.coinSelections.find(
+          (cs) =>
+            cs.round === gameState.currentRound - 1 &&
+            cs.match === gameState.currentMatch
+        )?.coins;
 
       // Filter the strategies to only those that match the previous round's selection
       const nextStrategies = strategies.filter((s) => s[0] === lastSelection);
@@ -127,6 +155,9 @@ export default function Game() {
 
       // Update valid choices for the next round
       setValidChoices(nextValidChoices);
+    } else {
+      // Reset valid choices for the first round
+      setValidChoices([0, 1, 2, 3, 4, 5]);
     }
   }, [gameState]);
 
@@ -148,7 +179,7 @@ export default function Game() {
 
   const handleSubmit = () => {
     const guessedPlayerKey =
-      gameState?.player1 === user?._id ? "player1Role" : "player2Role";
+      gameState?.player1._id === user?._id ? "player1Role" : "player2Role";
 
     // Update game state, switch active player, etc.
     socket.emit("submitRound", {
@@ -189,8 +220,7 @@ export default function Game() {
       });
     });
 
-    socket?.on("levelCompleted", (game) => {
-      toast.success("Level Completed");
+    socket?.on("matchCompleted", (game) => {
       setGameState({
         ...game,
         timer: 10,
@@ -199,6 +229,21 @@ export default function Game() {
       setSelectedCoins(null);
       setGuess(null);
       setSubmitted(false);
+
+      // Display the result message
+      const myUserId = user._id;
+      const lastMatchWinner =
+        game.matchWinners[game.matchWinners.length - 1];
+
+      if (!lastMatchWinner) return;
+
+      if (lastMatchWinner.winner === null) {
+        toast("Draw");
+      } else if (lastMatchWinner.winner === myUserId) {
+        toast("You Won");
+      } else {
+        toast("You Lose");
+      }
     });
 
     socket?.on("gameCompleted", (game) => {
@@ -213,7 +258,7 @@ export default function Game() {
 
     return () => {
       socket.off("roundChanged");
-      socket.off("levelCompleted");
+      socket.off("matchCompleted");
       socket.off("gameCompleted");
       socket.off("roundSubmitted");
       socket.off("gameAborted");
@@ -224,15 +269,13 @@ export default function Game() {
     let userConfirmed = false;
 
     const handleBeforeUnload = (event) => {
-      // Show the confirmation prompt
       event.preventDefault();
-      event.returnValue = ""; // This is required for the prompt to show up in some browsers
-      return ""; // This is required for the prompt to show up in some browsers
+      event.returnValue = "";
+      return "";
     };
 
     const handleUnload = () => {
       if (userConfirmed) {
-        // Your custom function to run when the user confirms they want to leave
         socket.emit("userLeft", {
           userId: user._id,
           gameId,
@@ -259,27 +302,28 @@ export default function Game() {
   }, [socket, user]);
 
   const renderGameControls = () => {
-    // const guessedPlayer = gameState?.player1
-
     const guessedPlayerKey =
-      gameState?.player1 === user?._id ? "player1Role" : "player2Role";
+      gameState?.player1._id === user?._id ? "player1Role" : "player2Role";
 
     if (gameState?.[guessedPlayerKey] === "coin-player") {
       return (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Select coins:</h3>
-          <div className="flex space-x-2">
-            {validChoices?.map((coins) => (
-              <Button
-                key={coins}
-                onClick={() => handleCoinSelection(coins)}
-                variant={selectedCoins === coins ? "default" : "outline"}
-              >
-                {coins}
-              </Button>
-            ))}
+          <h3 className="text-lg font-semibold">Coin Player</h3>
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold">Select coins:</h3>
+            <div className="flex space-x-2">
+              {validChoices?.map((coins) => (
+                <Button
+                  key={coins}
+                  onClick={() => handleCoinSelection(coins)}
+                  variant={selectedCoins === coins ? "default" : "outline"}
+                  className="text-xl px-4 py-2"
+                >
+                  {coins}
+                </Button>
+              ))}
+            </div>
           </div>
-
           {submitted ? (
             <div>Coins selected: {selectedCoins}</div>
           ) : (
@@ -292,19 +336,22 @@ export default function Game() {
     } else {
       return (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Make your guess:</h3>
-          <div className="flex space-x-2">
-            {validChoices.map((coins) => (
-              <Button
-                key={coins}
-                onClick={() => handleGuess(coins)}
-                variant={guess === coins ? "default" : "outline"}
-              >
-                {coins}
-              </Button>
-            ))}
+          <h3 className="text-lg font-semibold">Estimator</h3>
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold">Make your guess:</h3>
+            <div className="flex space-x-2">
+              {validChoices.map((coins) => (
+                <Button
+                  key={coins}
+                  onClick={() => handleGuess(coins)}
+                  variant={guess === coins ? "default" : "outline"}
+                  className="text-xl px-4 py-2"
+                >
+                  {coins}
+                </Button>
+              ))}
+            </div>
           </div>
-
           {submitted ? (
             <div>Your guess: {guess}</div>
           ) : (
@@ -317,33 +364,67 @@ export default function Game() {
     }
   };
 
+  // NEW CODE: Extract previous round data
+  const previousRound = gameState ? gameState.currentRound - 1 : null;
+
+  const previousCoinSelection =
+    previousRound > 0
+      ? gameState.coinSelections.find(
+          (cs) =>
+            cs.round === previousRound && cs.match === gameState.currentMatch
+        )
+      : null;
+
+  const previousGuess =
+    previousRound > 0
+      ? gameState.guesses.find(
+          (g) =>
+            g.round === previousRound && g.match === gameState.currentMatch
+        )
+      : null;
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Game in Progress</CardTitle>
+        {/* Display Game: Player1 vs Player2 (Score) */}
+        <CardTitle>
+          Game: {gameState?.player1?.username} vs {gameState?.player2?.username} (
+          {player1Score} - {player2Score})
+        </CardTitle>
       </CardHeader>
       {gameState && (
         <CardContent className="space-y-4">
           <div className="flex justify-between">
+            {/* Display role instead of Active Player */}
+            <span>
+              {gameState?.player1._id === user._id
+                ? gameState.player1Role === "coin-player"
+                  ? "Coin Player"
+                  : "Estimator"
+                : gameState.player2Role === "coin-player"
+                ? "Coin Player"
+                : "Estimator"}
+            </span>
             <span>
               Round: {gameState?.currentRound}/{gameState.rounds}
             </span>
             <span>
-              Level: {gameState?.currentLevel}/{gameState.levels}
-            </span>
-            <span>
-              Active Player:{" "}
-              {gameState.activePlayer === "coinPlayer"
-                ? "Coin Player"
-                : "Estimator"}
+              Match: {gameState?.currentMatch}/{gameState.matches}
             </span>
           </div>
+          {/* NEW CODE: Display previous round choices */}
+          {previousRound > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold">Last Picks</h3>
+              <p>
+                Coin Player selected: {previousCoinSelection?.coins ?? "N/A"}
+              </p>
+              <p>Estimator guessed: {previousGuess?.guess ?? "N/A"}</p>
+            </div>
+          )}
           <Progress value={(gameState?.timer / 30) * 100} />
           <div>Time Remaining: {gameState?.timer} seconds</div>
-          {/* <div className="flex justify-between">
-            <span>Coin Player Score: {gameState.score.coinPlayer}</span>
-            <span>Estimator Score: {gameState.score.estimator}</span>
-          </div> */}
+
           {renderGameControls()}
         </CardContent>
       )}

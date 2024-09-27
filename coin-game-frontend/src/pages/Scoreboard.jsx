@@ -97,6 +97,19 @@ export default function Scoreboard() {
           >
             Guessers
           </Button>
+          {/* New Tabs for AI modes */}
+          <Button
+            onClick={() => setScoreBoardType("ai-easy")}
+            variant={scoreBoardType === "ai-easy" ? "default" : "outline"}
+          >
+            Against AI (Easy)
+          </Button>
+          <Button
+            onClick={() => setScoreBoardType("ai-hard")}
+            variant={scoreBoardType === "ai-hard" ? "default" : "outline"}
+          >
+            Against AI (Hard)
+          </Button>
         </div>
 
         <div className="flex items-center space-x-2 mb-4">

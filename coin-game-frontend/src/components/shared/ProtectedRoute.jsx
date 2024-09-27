@@ -1,9 +1,17 @@
 import { Navigate } from "react-router-dom";
+import { useAppContext } from "@/context/AppContext";
+import Spinner from "@/components/ui/Spinner";
+import useToken from "@/hooks/useToken";
 
 const ProtectedRoute = ({ children }) => {
-  const token = localStorage.getItem("token"); // Check if token exists in local storage
+  const { user, loading } = useAppContext();
+  const { token } = useToken();
 
-  return token ? children : <Navigate to="/login" />; // Redirect to login if no token
+  if (loading) {
+    return <Spinner />;
+  }
+
+  return user || token ? children : <Navigate to="/login" />;
 };
 
 export default ProtectedRoute;

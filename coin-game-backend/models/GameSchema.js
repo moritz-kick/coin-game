@@ -9,13 +9,12 @@ const GameSchema = new mongoose.Schema({
   player2: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
-    required: true,
   },
-  levels: {
+  matches: {
     type: Number,
     default: 3,
   },
-  currentLevel: {
+  currentMatch: {
     type: Number,
     default: 1,
   },
@@ -29,39 +28,35 @@ const GameSchema = new mongoose.Schema({
   },
   player1Role: {
     type: String,
-    default: "coin-player",
     enum: ["coin-player", "estimator"],
   },
   player2Role: {
     type: String,
-    default: "estimator",
     enum: ["coin-player", "estimator"],
   },
   coinSelections: [
     {
       round: Number,
       coins: Number,
-      level: Number,
+      match: Number,
     },
   ],
   guesses: [
     {
       round: Number,
       guess: Number,
-      level: Number,
+      match: Number,
     },
   ],
-
-  levelWinners: [
+  matchWinners: [
     {
-      level: Number,
+      match: Number,
       winner: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
       },
     },
   ],
-
   winner: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
@@ -70,6 +65,23 @@ const GameSchema = new mongoose.Schema({
     type: String,
     default: "in-progress",
     enum: ["in-progress", "completed", "aborted"],
+  },
+  player1Score: {
+    type: Number,
+    default: 0,
+  },
+  player2Score: {
+    type: Number,
+    default: 0,
+  },
+  // NEW FIELDS FOR AI GAMES
+  isAIGame: {
+    type: Boolean,
+    default: false,
+  },
+  aiDifficulty: {
+    type: String,
+    enum: ["Easy", "Hard"],
   },
 });
 
