@@ -1,13 +1,48 @@
-import React from "react";
+import * as React from "react";
+import { Slot } from "@radix-ui/react-slot";
+import { cva } from "class-variance-authority";
+import { cn } from "@/lib/utils";
+import * as SpinnerPrimitive from "@radix-ui/react-spinner";
 
-const Spinner = () => {
-  return (
-    <div className="flex justify-center items-center h-screen">
-      <div className="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full" role="status">
-        <span className="visually-hidden">Loading...</span>
-      </div>
-    </div>
-  );
-};
+const spinnerVariants = cva(
+  "inline-block rounded-full border-4 animate-spin",
+  {
+    variants: {
+      size: {
+        sm: "w-4 h-4",
+        md: "w-8 h-8",
+        lg: "w-12 h-12",
+      },
+      color: {
+        primary: "border-t-primary",
+        secondary: "border-t-secondary",
+        accent: "border-t-accent",
+      },
+    },
+    defaultVariants: {
+      size: "md",
+      color: "primary",
+    },
+  }
+);
 
-export default Spinner;
+const Spinner = React.forwardRef(
+  ({ className, size, color, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : SpinnerPrimitive.Root;
+    return (
+      <Comp
+        className={cn(spinnerVariants({ size, color, className }))}
+        ref={ref}
+        {...props}
+        role="status"
+      >
+        <SpinnerPrimitive.Circle />
+        <span className="sr-only">Loading...</span>
+      </Comp>
+    );
+  }
+);
+
+Spinner.displayName = "Spinner";
+
+export { Spinner, spinnerVariants };

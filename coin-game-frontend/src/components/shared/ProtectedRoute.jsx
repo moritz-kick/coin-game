@@ -8,7 +8,7 @@ const ProtectedRoute = ({ children }) => {
   const { token } = useToken();
 
   if (loading) {
-    return <Spinner />;
+    return <Spinner aria-label="Loading user data" />;
   }
 
   return user || token ? children : <Navigate to="/login" />;
