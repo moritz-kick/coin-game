@@ -142,7 +142,9 @@ export default function Home() {
           <Button asChild variant="outline">
             <Link to="/rules">View Game Rules</Link>
           </Button>
+          <div className="p-4">
           <CardDescription>Check out the detailed rules with a short video</CardDescription>
+          </div>
         </CardContent>
       </Card>
     </div>
