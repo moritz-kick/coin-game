@@ -1,6 +1,6 @@
 import { Navigate } from "react-router-dom";
 import { useAppContext } from "@/context/AppContext";
-import Spinner from "@/components/ui/Spinner";
+import Spinner from "@/components/ui/spinner";
 import useToken from "@/hooks/useToken";
 
 const ProtectedRoute = ({ children }) => {
