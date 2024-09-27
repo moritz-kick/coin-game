@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import Rules from "./Rules";
 import {
   Card,
   CardHeader,
@@ -75,8 +73,8 @@ export default function Home() {
         </CardHeader>
         <CardContent>
           <p>
-            Patrik's Coin Game is a two-player game where one player hides coins
-            and the other tries to guess the number.
+            Patrik's Coin Game is a two-player game where <mark>one player hides coins</mark>
+            and <mark>the other tries to guess</mark> the number.
           </p>
           <div className="mt-4 space-x-4">
             {/* AI Game Dialog */}
@@ -140,17 +138,13 @@ export default function Home() {
           <CardTitle>Game Rules</CardTitle>
         </CardHeader>
         <CardContent>
-          <Rules />
-        </CardContent>
-      </Card>
-
-      {/* Game Screenshots */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Game Screenshots</CardTitle>
-        </CardHeader>
-        <CardContent>
           <ImageSwiper images={images} autoplay={true} delay={3000} />
+          <Button asChild>
+            <Link to="/rules">Rules</Link>
+          </Button>
+          <p className="mt-2">
+            Check out the detailed rules with a short video on the next page.
+          </p>
         </CardContent>
       </Card>
     </div>
