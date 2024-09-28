@@ -194,18 +194,21 @@ io.on("connection", (socket) => {
 
   // Handle user disconnect
   socket.on("disconnect", async () => {
-    const updateUserStatus = await UserSchema.findOneAndUpdate(
-      {
-        socketId,
-      },
-      {
-        status: "offline",
-        socketId: "",
-      },
-      { new: true }
-    );
+    try {
+      const disconnectedUser = await UserSchema.findOneAndUpdate(
+        { socketId },
+        { status: "offline", socketId: "" },
+        { new: true }
+      );
 
-    console.log(`User ${disconnectedUser?.username || 'Unknown'} disconnected`);
+      if (disconnectedUser) {
+        console.log(`User ${disconnectedUser.username} disconnected`);
+      } else {
+        console.log(`User with socket ID ${socketId} disconnected, but no user was found in the database.`);
+      }
+    } catch (error) {
+      console.error('Error handling disconnect:', error);
+    }
   });
 });
 
