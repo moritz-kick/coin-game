@@ -9,19 +9,15 @@ import Rules from "@/pages/Rules";
 import AboutTheGame from "@/pages/AboutTheGame";
 import ManageAccount from "@/pages/ManageAccount";
 import { Toaster } from "sonner";
-import AppProvider, { useAppContext } from "./context/AppContext";
-import { useEffect } from "react";
-import { initSocket } from "./lib/socket";
+import AppProvider from "./context/AppContext";
 import Game from "./pages/Game";
 import GameVsAI from "./pages/GameVsAI";
 import ProtectedRoute from "./components/shared/ProtectedRoute";
-import { API } from "@/lib/utils";
 
 export default function App() {
   return (
     <Router>
       <AppProvider>
-        <AppInitializer />
         <div className="flex flex-col min-h-screen">
           <Toaster />
           <Header />
@@ -71,39 +67,4 @@ export default function App() {
       </AppProvider>
     </Router>
   );
-}
-
-// Component to handle automatic login and socket initialization
-function AppInitializer() {
-  const { setUser } = useAppContext();
-
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-
-    if (token) {
-      (async () => {
-        try {
-          console.log("Token found, attempting to fetch user...");
-          const response = await API().get("/user/get-user", {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
-          console.log("User data fetched:", response.data.user);
-          setUser(response.data.user);
-        } catch (error) {
-          console.error("Error fetching user:", error.response?.data || error.message);
-          localStorage.removeItem("token");
-          console.log("Token removed, redirecting to login...");
-          window.location.href = "/login"; // Redirect to login if token is invalid
-        }
-      })();
-    } else {
-      console.log("No token found in localStorage.");
-    }
-
-    initSocket();
-  }, [setUser]);
-
-  return null;
 }
