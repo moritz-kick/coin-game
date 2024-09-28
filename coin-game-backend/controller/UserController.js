@@ -5,12 +5,14 @@ const jwt = require("jsonwebtoken");
 const registerOrLoginUser = async (req, res) => {
   try {
     const { username, deviceId } = req.body;
+    console.log("Login attempt:", { username, deviceId });
 
     let user = await User.findOne({
       deviceId,
     });
 
     if (!user) {
+      console.log("Creating new user");
       user = new User({
         username,
         deviceId,
@@ -18,18 +20,22 @@ const registerOrLoginUser = async (req, res) => {
       await user.save();
     } else {
       // Update username if it has changed
+      console.log("Existing user found");
       if (user.username !== username) {
         user.username = username;
         await user.save();
+        console.log("Username updated");
       }
     }
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+    console.log("Token generated for user:", user._id);
 
     res.status(200).json({
       token,
     });
   } catch (err) {
+    console.error("Login error:", err);
     res.status(500).json({
       error: err.message,
     });

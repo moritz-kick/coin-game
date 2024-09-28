@@ -8,7 +8,7 @@ import {
   CardTitle,
   CardContent,
 } from "@/components/ui/card";
-import { Spinner } from "@/components/ui/spinner"; // Import the spinner
+import { Spinner } from "@/components/ui/spinner";
 import { API, showErrorToast } from "@/lib/utils";
 import useToken from "@/hooks/useToken";
 
@@ -16,15 +16,16 @@ import useToken from "@/hooks/useToken";
 const getOrCreateDeviceId = () => {
   let deviceId = localStorage.getItem("deviceId");
   if (!deviceId) {
-    deviceId = crypto.randomUUID(); // Generate a UUID
+    deviceId = crypto.randomUUID();
     localStorage.setItem("deviceId", deviceId);
   }
+  console.log("Device ID:", deviceId); // Log device ID
   return deviceId;
 };
 
 export default function Login() {
   const [username, setUsername] = useState("");
-  const [loading, setLoading] = useState(false); // State for loading spinner
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { updateToken } = useToken();
 
@@ -35,7 +36,8 @@ export default function Login() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setLoading(true); // Start spinner
+    setLoading(true);
+    console.log("Attempting login for username:", username);
 
     try {
       const deviceId = getOrCreateDeviceId();
@@ -44,14 +46,22 @@ export default function Login() {
         deviceId: deviceId,
       });
 
-      if (data) {
+      console.log("Login response:", data);
+
+      if (data && data.token) {
+        console.log("Token received, updating...");
         updateToken(data.token);
+        console.log("Token updated, navigating to waiting room...");
         navigate("/waiting-room");
+      } else {
+        console.error("No token received in response");
+        showErrorToast("Login failed: No token received");
       }
     } catch (error) {
-      showErrorToast(error);
+      console.error("Login error:", error.response?.data || error.message);
+      showErrorToast(`Login failed: ${error.response?.data?.error || error.message}`);
     } finally {
-      setLoading(false); // Stop spinner
+      setLoading(false);
     }
   };
 
@@ -68,7 +78,7 @@ export default function Login() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
-            disabled={loading} // Disable input during loading
+            disabled={loading}
           />
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? <Spinner /> : "Login"}

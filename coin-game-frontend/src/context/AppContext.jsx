@@ -9,7 +9,7 @@ export const useAppContext = () => useContext(AppContext);
 
 const AppProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const { token, updateToken } = useToken(); // Use the useToken hook
+  const { token, updateToken } = useToken();
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -22,6 +22,7 @@ const AppProvider = ({ children }) => {
 
   // Fetch user data if token exists
   useEffect(() => {
+    console.log("Token changed:", token);
     if (token) {
       (async () => {
         try {
