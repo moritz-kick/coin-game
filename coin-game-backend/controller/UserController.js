@@ -12,19 +12,20 @@ const registerOrLoginUser = async (req, res) => {
     });
 
     if (!user) {
-      console.log("Creating new user");
+      console.log("Creating new user with username:", username);
       user = new User({
         username,
         deviceId,
       });
       await user.save();
+      console.log(`New user created with ID: ${user._id}`);
     } else {
       // Update username if it has changed
-      console.log("Existing user found");
+      console.log("Existing user found with ID:", user._id);
       if (user.username !== username) {
         user.username = username;
         await user.save();
-        console.log("Username updated");
+        console.log(`Username updated to: ${username}`);
       }
     }
 
