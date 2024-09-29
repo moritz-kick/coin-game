@@ -32,7 +32,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(cors());
+// Parse JSON bodies
 app.use(express.json());
 
 mongoose
