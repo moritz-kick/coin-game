@@ -27,7 +27,7 @@ const AppProvider = ({ children }) => {
       (async () => {
         try {
           console.log("Token found, attempting to fetch user...");
-          const { data } = await API().get("/user/get-user");
+          const { data } = await API().get("/user");
           console.log("User data fetched:", data.user);
           setUser(data.user);
         } catch (error) {
