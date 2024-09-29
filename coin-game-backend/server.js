@@ -75,9 +75,6 @@ io.on("connection", (socket) => {
     } catch (error) {
         console.error(`Error joining waiting room for user ${userId}:`, error);
     }
-
-    // Notify all clients in waiting room
-    io.to("waitingRoom").emit("updateWaitingRoom", updateUserStatus);
   });
 
   // Handle user leaving the game
