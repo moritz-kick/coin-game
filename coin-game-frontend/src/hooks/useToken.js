@@ -1,18 +1,18 @@
-// useToken.js
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 const useToken = () => {
-  const [token, setToken] = useState(null);
+  const [token, setToken] = useState(() => localStorage.getItem("token"));
 
-  useEffect(() => {
-    const storedToken = localStorage.getItem("token");
-    setToken(storedToken);
+  // useCallback to memoize updateToken
+  const updateToken = useCallback((newToken) => {
+    if (newToken) {
+      localStorage.setItem("token", newToken);
+      setToken(newToken);
+    } else {
+      localStorage.removeItem("token");
+      setToken(null);
+    }
   }, []);
-
-  const updateToken = (newToken) => {
-    localStorage.setItem("token", newToken);
-    setToken(newToken);
-  };
 
   return { token, updateToken };
 };

@@ -36,7 +36,7 @@ const AppProvider = ({ children }) => {
           localStorage.removeItem("token");
           updateToken(null);
           setUser(null);
-          navigate("/login");
+          //navigate("/login");
         } finally {
           setLoading(false);
         }
