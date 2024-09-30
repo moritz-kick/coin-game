@@ -27,7 +27,7 @@ export default function WaitingRoom() {
   const navigate = useNavigate();
   const socket = getSocket();
   const [selectedMatches, setSelectedMatches] = useState(1);
-  const [isOpen, setIsOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
 
   useEffect(() => {
     fetchUsers();
@@ -54,7 +54,8 @@ export default function WaitingRoom() {
       challengedId,
       matches: selectedMatches,
     });
-    setIsOpen(false);
+    setSelectedUser(null);
+    toast.success(`Challenge sent to ${users.find(u => u._id === challengedId)?.username}`);
   };
 
   useEffect(() => {
@@ -102,7 +103,7 @@ export default function WaitingRoom() {
     socket?.on("gameCreated", ({ gameId }) => {
       navigate(`/game/${gameId}`);
     });
-  }, [socket]);
+  }, [socket, navigate]);
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
@@ -125,7 +126,7 @@ export default function WaitingRoom() {
         <ScrollArea className="h-[400px] rounded-md border p-4">
           {filteredUsers.map((user) => (
             <div
-              key={user.id}
+              key={user._id}
               className="flex items-center justify-between py-2"
             >
               <div className="flex items-center space-x-4">
@@ -147,45 +148,52 @@ export default function WaitingRoom() {
                 </div>
               </div>
 
-              <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                <DialogTrigger asChild>
-                  <Button disabled={user.status === "in-game"} size="sm">
-                    Play
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle>Select Number of Matches</DialogTitle>
-                  </DialogHeader>
-                  <div className="pt-4">
-                    <Slider
-                      min={1}
-                      max={10}
-                      step={1}
-                      value={selectedMatches}
-                      onChange={(value) => setSelectedMatches(value)}
-                    />
-                    <div className="text-center mt-2">
-                      Matches: {selectedMatches}
-                    </div>
-                  </div>
-                  <DialogFooter className="mt-6">
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsOpen(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button onClick={() => handlePlayRequest(user._id)}>
-                      Continue
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+              {/* Trigger the Dialog by setting the selected user */}
+              <Button
+                disabled={user.status === "in-game"}
+                size="sm"
+                onClick={() => setSelectedUser(user)}
+              >
+                Play
+              </Button>
             </div>
           ))}
         </ScrollArea>
       </CardContent>
+
+      {/* Single Dialog for challenging a user */}
+      {selectedUser && (
+        <Dialog open={true} onOpenChange={() => setSelectedUser(null)}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Select Number of Matches</DialogTitle>
+            </DialogHeader>
+            <div className="pt-4">
+              <Slider
+                min={1}
+                max={10}
+                step={1}
+                value={selectedMatches}
+                onValueChange={(value) => setSelectedMatches(value[0])} // Assuming Slider provides an array
+              />
+              <div className="text-center mt-2">
+                Matches: {selectedMatches}
+              </div>
+            </div>
+            <DialogFooter className="mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setSelectedUser(null)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={() => handlePlayRequest(selectedUser._id)}>
+                Continue
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </Card>
   );
 }
