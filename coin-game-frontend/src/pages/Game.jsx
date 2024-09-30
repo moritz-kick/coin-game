@@ -89,7 +89,7 @@ export default function Game() {
         const { data } = await API().get(`/game/${gameId}`);
         setGameState({
           ...data?.game,
-          timer: 10,
+          timer: 30,
         });
       } catch (error) {
         console.error(error);
@@ -206,7 +206,7 @@ export default function Game() {
     socket?.on("roundChanged", (game) => {
       setGameState({
         ...game,
-        timer: 10,
+        timer: 30,
       });
       setSelectedCoins(null);
       setGuess(null);
@@ -223,7 +223,7 @@ export default function Game() {
     socket?.on("matchCompleted", (game) => {
       setGameState({
         ...game,
-        timer: 10,
+        timer: 30,
       });
       setValidChoices([0, 1, 2, 3, 4, 5]);
       setSelectedCoins(null);

@@ -12,7 +12,54 @@ import { useAppContext } from "@/context/AppContext";
 import { toast } from "sonner";
 
 const strategies = [
-  // ... your strategies array remains the same
+  [0, 1, 2],
+  [0, 1, 3],
+  [0, 1, 4],
+  [0, 1, 5],
+  [0, 2, 3],
+  [0, 2, 4],
+  [0, 2, 5],
+  [0, 3, 4],
+  [0, 3, 5],
+  [0, 4, 5],
+  [0, 5, 5],
+  [1, 0, 2],
+  [1, 0, 3],
+  [1, 0, 4],
+  [1, 0, 5],
+  [1, 2, 0],
+  [1, 2, 3],
+  [1, 2, 4],
+  [1, 2, 5],
+  [1, 3, 0],
+  [1, 3, 4],
+  [1, 3, 5],
+  [1, 4, 0],
+  [1, 4, 5],
+  [1, 5, 0],
+  [1, 5, 5],
+  [2, 0, 3],
+  [2, 0, 4],
+  [2, 0, 5],
+  [2, 3, 0],
+  [2, 3, 4],
+  [2, 3, 5],
+  [2, 4, 0],
+  [2, 4, 5],
+  [2, 5, 0],
+  [2, 5, 5],
+  [3, 0, 4],
+  [3, 0, 5],
+  [3, 4, 0],
+  [3, 4, 5],
+  [3, 5, 0],
+  [3, 5, 5],
+  [4, 0, 5],
+  [4, 5, 0],
+  [4, 5, 5],
+  [5, 0, 5],
+  [5, 5, 0],
+  [5, 5, 5],
 ];
 
 export default function GameVsAI() {
@@ -42,21 +89,10 @@ export default function GameVsAI() {
   const [playerScore, setPlayerScore] = useState(0);
   const [aiScore, setAIScore] = useState(0);
 
-  const [timer, setTimer] = useState(10);
+  const [timer, setTimer] = useState(30);
 
   const [gameHistory, setGameHistory] = useState([]);
 
-  // Placeholder AI algorithms
-  const aiEasy = () => {
-    // Simple random choice within valid choices
-    return validChoices[Math.floor(Math.random() * validChoices.length)];
-  };
-
-  const aiHard = () => {
-    // Implement a more strategic choice
-    // For placeholder, we'll just pick the highest valid choice
-    return Math.max(...validChoices);
-  };
 
   useEffect(() => {
     if (timer > 0 && !submitted) {
@@ -70,7 +106,7 @@ export default function GameVsAI() {
 
   useEffect(() => {
     // Reset timer when round or match changes
-    setTimer(10);
+    setTimer(30);
   }, [currentRound, currentMatch]);
 
   useEffect(() => {

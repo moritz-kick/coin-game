@@ -74,7 +74,6 @@ const GameSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
-  // NEW FIELDS FOR AI GAMES
   isAIGame: {
     type: Boolean,
     default: false,
