@@ -1,11 +1,9 @@
 import { Navigate } from "react-router-dom";
 import { useAppContext } from "@/context/AppContext";
 import { Spinner } from "@/components/ui/spinner";
-import useToken from "@/hooks/useToken";
 
 const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useAppContext();
-  const { token } = useToken();
+  const { user, loading, token } = useAppContext();
 
   if (loading) {
     return <Spinner aria-label="Loading user data" />;

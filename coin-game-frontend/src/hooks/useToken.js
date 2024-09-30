@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback } from "react";
 const useToken = () => {
   const [token, setToken] = useState(() => localStorage.getItem("token"));
 
-  // useCallback to memoize updateToken
   const updateToken = useCallback((newToken) => {
     if (newToken) {
       localStorage.setItem("token", newToken);

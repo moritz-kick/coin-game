@@ -1,17 +1,26 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { API, showErrorToast } from "@/lib/utils";
 import { initSocket, getSocket } from "@/lib/socket";
-import useToken from "@/hooks/useToken";
 
 const AppContext = createContext();
 export const useAppContext = () => useContext(AppContext);
 
 const AppProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const { token, updateToken } = useToken();
+  const [token, setToken] = useState(() => localStorage.getItem("token"));
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  const updateToken = useCallback((newToken) => {
+    if (newToken) {
+      localStorage.setItem("token", newToken);
+      setToken(newToken);
+    } else {
+      localStorage.removeItem("token");
+      setToken(null);
+    }
+  }, []);
 
   // Initialize socket connection when the component mounts
   useEffect(() => {
@@ -33,7 +42,6 @@ const AppProvider = ({ children }) => {
         } catch (error) {
           console.error("Error fetching user:", error.response?.data || error.message);
           showErrorToast("Session expired, please log in again.");
-          localStorage.removeItem("token");
           updateToken(null);
           setUser(null);
           //navigate("/login");
@@ -57,7 +65,6 @@ const AppProvider = ({ children }) => {
 
   // Logout function
   const logout = () => {
-    localStorage.removeItem("token");
     updateToken(null);
     setUser(null);
     navigate("/login");
@@ -91,6 +98,7 @@ const AppProvider = ({ children }) => {
         user,
         setUser,
         loading,
+        token,
         updateToken,
         logout,
         deleteUserAccount,

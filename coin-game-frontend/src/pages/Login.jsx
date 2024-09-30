@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { API, showErrorToast } from "@/lib/utils";
-import useToken from "@/hooks/useToken";
+import { useAppContext } from "@/context/AppContext";
 
 // Utility function to get or create a unique device ID
 const getOrCreateDeviceId = () => {
@@ -27,7 +27,7 @@ export default function Login() {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { updateToken } = useToken();
+  const { updateToken } = useAppContext();
 
   useEffect(() => {
     // Generate or get existing device ID when the component mounts
