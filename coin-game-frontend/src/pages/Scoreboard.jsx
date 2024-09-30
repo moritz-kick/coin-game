@@ -19,25 +19,20 @@ export default function Scoreboard() {
   const [sortDirection, setSortDirection] = useState("desc");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
   const itemsPerPage = 10;
 
   const [scoreBoardType, setScoreBoardType] = useState("all");
-
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchScores();
   }, [scoreBoardType]);
 
   const fetchScores = async () => {
-    // TODO: Implement fetching scores from the server
-
+    setLoading(true);
     try {
-      const { data } = await API().get(
-        `/user/scorecard?type=${scoreBoardType}`
-      );
-
-      setScores(data?.users);
+      const { data } = await API().get(`/user/scorecard?type=${scoreBoardType}`);
+      setScores(data?.users || []);
     } catch (error) {
       console.log(error, "error");
       showErrorToast(error);
@@ -79,36 +74,15 @@ export default function Scoreboard() {
       </CardHeader>
       <CardContent>
         <div className="flex flex-wrap items-center gap-2 mb-4">
-          <Button
-            onClick={() => setScoreBoardType("all")}
-            variant={scoreBoardType === "all" ? "default" : "outline"}
-          >
-            All
-          </Button>
-          <Button
-            onClick={() => setScoreBoardType("coin-players")}
-            variant={scoreBoardType === "coin-players" ? "default" : "outline"}
-          >
-            Coin Players
-          </Button>
-          <Button
-            onClick={() => setScoreBoardType("estimators")}
-            variant={scoreBoardType === "estimators" ? "default" : "outline"}
-          >
-            Guessers
-          </Button>
-          <Button
-            onClick={() => setScoreBoardType("ai-easy")}
-            variant={scoreBoardType === "ai-easy" ? "default" : "outline"}
-          >
-            Against AI (Easy)
-          </Button>
-          <Button
-            onClick={() => setScoreBoardType("ai-hard")}
-            variant={scoreBoardType === "ai-hard" ? "default" : "outline"}
-          >
-            Against AI (Hard)
-          </Button>
+          {["all", "coin-players", "estimators", "ai-easy", "ai-hard"].map((type) => (
+            <Button
+              key={type}
+              onClick={() => setScoreBoardType(type)}
+              variant={scoreBoardType === type ? "default" : "outline"}
+            >
+              {type.replace("-", " ")}
+            </Button>
+          ))}
         </div>
 
         <div className="flex items-center space-x-2 mb-4">
@@ -123,72 +97,78 @@ export default function Scoreboard() {
             <Search className="h-4 w-4" />
           </Button>
         </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead
-                onClick={() => handleSort("username")}
-                className="cursor-pointer"
-              >
-                Username{" "}
-                {sortColumn === "username" &&
-                  (sortDirection === "asc" ? (
-                    <ChevronUp className="inline" />
-                  ) : (
-                    <ChevronDown className="inline" />
-                  ))}
-              </TableHead>
-              <TableHead
-                onClick={() => handleSort("wins")}
-                className="cursor-pointer"
-              >
-                Wins{" "}
-                {sortColumn === "wins" &&
-                  (sortDirection === "asc" ? (
-                    <ChevronUp className="inline" />
-                  ) : (
-                    <ChevronDown className="inline" />
-                  ))}
-              </TableHead>
-              <TableHead
-                onClick={() => handleSort("losses")}
-                className="cursor-pointer"
-              >
-                Losses{" "}
-                {sortColumn === "losses" &&
-                  (sortDirection === "asc" ? (
-                    <ChevronUp className="inline" />
-                  ) : (
-                    <ChevronDown className="inline" />
-                  ))}
-              </TableHead>
-              <TableHead
-                onClick={() => handleSort("winRate")}
-                className="cursor-pointer"
-              >
-                Win Rate{" "}
-                {sortColumn === "winRate" &&
-                  (sortDirection === "asc" ? (
-                    <ChevronUp className="inline" />
-                  ) : (
-                    <ChevronDown className="inline" />
-                  ))}
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paginatedScores.map((score) => (
-              <TableRow key={score.id}>
-                <TableCell>{score.username}</TableCell>
-                <TableCell>{score.wins}</TableCell>
-                <TableCell>{score.losses}</TableCell>
-                <TableCell>
-                  {score.winRate ? +score?.winRate.toFixed(2) : 0}%
-                </TableCell>
+        
+        {loading ? (
+          <p>Loading...</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead
+                  onClick={() => handleSort("username")}
+                  className="cursor-pointer"
+                >
+                  Username{" "}
+                  {sortColumn === "username" &&
+                    (sortDirection === "asc" ? (
+                      <ChevronUp className="inline" />
+                    ) : (
+                      <ChevronDown className="inline" />
+                    ))}
+                </TableHead>
+                <TableHead
+                  onClick={() => handleSort("wins")}
+                  className="cursor-pointer"
+                >
+                  Wins{" "}
+                  {sortColumn === "wins" &&
+                    (sortDirection === "asc" ? (
+                      <ChevronUp className="inline" />
+                    ) : (
+                      <ChevronDown className="inline" />
+                    ))}
+                </TableHead>
+                <TableHead
+                  onClick={() => handleSort("losses")}
+                  className="cursor-pointer"
+                >
+                  Losses{" "}
+                  {sortColumn === "losses" &&
+                    (sortDirection === "asc" ? (
+                      <ChevronUp className="inline" />
+                    ) : (
+                      <ChevronDown className="inline" />
+                    ))}
+                </TableHead>
+                <TableHead
+                  onClick={() => handleSort("winRate")}
+                  className="cursor-pointer"
+                >
+                  Win Rate{" "}
+                  {sortColumn === "winRate" &&
+                    (sortDirection === "asc" ? (
+                      <ChevronUp className="inline" />
+                    ) : (
+                      <ChevronDown className="inline" />
+                    ))}
+                </TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {paginatedScores.map((score) => (
+                <TableRow key={score.id}>
+                  <TableCell>{score.username}</TableCell>
+                  <TableCell>{score.wins}</TableCell>
+                  <TableCell>{score.losses}</TableCell>
+                  <TableCell>
+                    {score.winRate ? +score.winRate.toFixed(2) : 0}%
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+
         <div className="flex justify-between items-center mt-4">
           <div>
             Showing {(currentPage - 1) * itemsPerPage + 1} -{" "}

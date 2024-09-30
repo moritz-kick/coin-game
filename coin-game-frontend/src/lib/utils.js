@@ -24,6 +24,10 @@ export const API = () => {
 };
 
 export const showErrorToast = (error) => {
-  console.error(error?.response?.data);
-  toast.error(error?.response?.data?.message || "An error occurred");
+  if (error?.response) {
+    const message = error?.response?.data?.message || error?.response?.data?.error || "An error occurred";
+    toast.error(message);
+  } else {
+    toast.error(error?.message || "An unknown error occurred");
+  }
 };

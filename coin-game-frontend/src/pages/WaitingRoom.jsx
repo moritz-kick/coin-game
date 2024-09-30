@@ -23,13 +23,9 @@ import { Slider } from "@/components/ui/slider";
 export default function WaitingRoom() {
   const [users, setUsers] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
-
   const { user: loggedInUser } = useAppContext();
-
   const navigate = useNavigate();
-
   const socket = getSocket();
-
   const [selectedMatches, setSelectedMatches] = useState(1);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -42,7 +38,6 @@ export default function WaitingRoom() {
   const fetchUsers = async () => {
     try {
       const { data } = await API().get("/user/online-users");
-
       setUsers(data.users);
     } catch (error) {
       showErrorToast(error);
@@ -73,7 +68,6 @@ export default function WaitingRoom() {
         if (index === -1) {
           return [...prevUsers, user];
         }
-
         return prevUsers;
       });
     });
