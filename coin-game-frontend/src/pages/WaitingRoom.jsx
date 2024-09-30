@@ -26,7 +26,7 @@ export default function WaitingRoom() {
   const { user: loggedInUser } = useAppContext();
   const navigate = useNavigate();
   const socket = getSocket();
-  const [selectedMatches, setSelectedMatches] = useState(1);
+  const [selectedMatches, setSelectedMatches] = useState([1]);
   const [selectedUser, setSelectedUser] = useState(null);
 
   useEffect(() => {
@@ -52,7 +52,7 @@ export default function WaitingRoom() {
     socket.emit("challengeUser", {
       challengerId: loggedInUser._id,
       challengedId,
-      matches: selectedMatches,
+      matches: selectedMatches[0],
     });
     setSelectedUser(null);
     toast.success(`Challenge sent to ${users.find(u => u._id === challengedId)?.username}`);
@@ -148,52 +148,50 @@ export default function WaitingRoom() {
                 </div>
               </div>
 
-              {/* Trigger the Dialog by setting the selected user */}
-              <Button
-                disabled={user.status === "in-game"}
-                size="sm"
-                onClick={() => setSelectedUser(user)}
-              >
-                Play
-              </Button>
+              {/* Use DialogTrigger to open dialog */}
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button
+                    disabled={user.status === "in-game"}
+                    size="sm"
+                    onClick={() => setSelectedUser(user)}
+                  >
+                    Play
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Select Number of Matches</DialogTitle>
+                  </DialogHeader>
+                  <div className="pt-4">
+                    <Slider
+                      min={1}
+                      max={10}
+                      step={1}
+                      value={selectedMatches}
+                      onValueChange={(values) => setSelectedMatches(values)}
+                    />
+                    <div className="text-center mt-2">
+                      Matches: {selectedMatches[0]}
+                    </div>
+                  </div>
+                  <DialogFooter className="mt-6">
+                    <Button
+                      variant="outline"
+                      onClick={() => setSelectedUser(null)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button onClick={() => handlePlayRequest(user._id)}>
+                      Continue
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           ))}
         </ScrollArea>
       </CardContent>
-
-      {/* Single Dialog for challenging a user */}
-      {selectedUser && (
-        <Dialog open={true} onOpenChange={() => setSelectedUser(null)}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Select Number of Matches</DialogTitle>
-            </DialogHeader>
-            <div className="pt-4">
-              <Slider
-                min={1}
-                max={10}
-                step={1}
-                value={selectedMatches}
-                onValueChange={(value) => setSelectedMatches(value[0])} // Assuming Slider provides an array
-              />
-              <div className="text-center mt-2">
-                Matches: {selectedMatches}
-              </div>
-            </div>
-            <DialogFooter className="mt-6">
-              <Button
-                variant="outline"
-                onClick={() => setSelectedUser(null)}
-              >
-                Cancel
-              </Button>
-              <Button onClick={() => handlePlayRequest(selectedUser._id)}>
-                Continue
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
     </Card>
   );
 }
