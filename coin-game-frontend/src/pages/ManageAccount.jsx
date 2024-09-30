@@ -38,6 +38,10 @@ export default function ManageAccount() {
           <CardTitle>Manage Your Account</CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="mb-4">
+            <p className="text-lg font-semibold">Current Username: {user?.username}</p>
+          </div>
+
           <Input
             value={newUsername}
             onChange={(e) => setNewUsername(e.target.value)}
