@@ -58,8 +58,13 @@ export default function Login() {
         showErrorToast("Login failed: No token received");
       }
     } catch (error) {
-      console.error("Login error:", error.response?.data || error.message);
-      showErrorToast(`Login failed: ${error.response?.data?.error || error.message}`);
+      // Handle if the username is already taken
+      if (error.response?.status === 400 && error.response?.data?.error === "Username is already taken. Please choose a different one.") {
+        showErrorToast("Username is already taken. Please choose a different one.");
+      } else {
+        console.error("Login error:", error.response?.data || error.message);
+        showErrorToast(`Login failed: ${error.response?.data?.error || error.message}`);
+      }
     } finally {
       setLoading(false);
     }

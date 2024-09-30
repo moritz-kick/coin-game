@@ -12,6 +12,15 @@ const registerOrLoginUser = async (req, res) => {
     });
 
     if (!user) {
+      // If no user exists for the device, check if the username is already taken
+      const usernameTaken = await User.findOne({ username });
+
+      if (usernameTaken) {
+        return res.status(400).json({
+          error: "Username is already taken. Please choose a different one.",
+        });
+      }
+
       console.log("Creating new user with username:", username);
       user = new User({
         username,
@@ -20,9 +29,19 @@ const registerOrLoginUser = async (req, res) => {
       await user.save();
       console.log(`New user created with ID: ${user._id}`);
     } else {
-      // Update username if it has changed
+      // If user exists for the device, update the username if needed
       console.log("Existing user found with ID:", user._id);
       if (user.username !== username) {
+        // Check if the new username is already taken by another user
+        const usernameTaken = await User.findOne({ username });
+
+        if (usernameTaken && usernameTaken._id.toString() !== user._id.toString()) {
+          return res.status(400).json({
+            error: "Username is already taken by another user.",
+          });
+        }
+
+        // Update the username
         user.username = username;
         await user.save();
         console.log(`Username updated to: ${username}`);
