@@ -59,9 +59,8 @@ export default function Home() {
   };
 
   const images = [
-    { src: "./images/placeholder1.png", alt: "Game Screenshot 1" },
-    { src: "./images/placeholder2.png", alt: "Game Screenshot 2" },
-    { src: "./images/placeholder3.png", alt: "Game Screenshot 3" },
+    { src: "./images/webanwendung_pcg_estimator.png", alt: "Estimators move in Round 1" },
+    { src: "./images/gameinvite.png", alt: "Game invite and Match number selection" },
   ];
 
   return (
