@@ -55,73 +55,73 @@ io.on("connection", (socket) => {
   // Handle user joining the waiting room
   socket.on("joinWaitingRoom", async (userId) => {
     try {
-        console.log(`User ${userId} is joining the waiting room with socket ID: ${socketId}`);
-        socket.join("waitingRoom");
-        socket.join(userId);
+      console.log(`User ${userId} is joining the waiting room with socket ID: ${socketId}`);
+      socket.join("waitingRoom");
+      socket.join(userId);
 
-        const updateUserStatus = await UserSchema.findByIdAndUpdate(
-            userId,
-            { status: "online", socketId },
-            { new: true }
-        );
+      const updateUserStatus = await UserSchema.findByIdAndUpdate(
+        userId,
+        { status: "online", socketId },
+        { new: true }
+      );
 
-        if (updateUserStatus) {
-            console.log(`User ${userId} status updated to online with socket ID: ${socketId}`);
-        } else {
-            console.log(`Failed to update status for user ${userId}`);
-        }
+      if (updateUserStatus) {
+        console.log(`User ${userId} status updated to online with socket ID: ${socketId}`);
+      } else {
+        console.log(`Failed to update status for user ${userId}`);
+      }
 
-        io.to("waitingRoom").emit("updateWaitingRoom", updateUserStatus);
+      io.to("waitingRoom").emit("updateWaitingRoom", updateUserStatus);
     } catch (error) {
-        console.error(`Error joining waiting room for user ${userId}:`, error);
+      console.error(`Error joining waiting room for user ${userId}:`, error);
     }
   });
 
   // Handle user leaving the game
   socket.on("userLeft", async ({ userId, gameId }) => {
     try {
-        console.log(`User ${userId} is leaving the game ${gameId}`);
+      console.log(`User ${userId} is leaving the game ${gameId}`);
+
+      await UserSchema.findByIdAndUpdate(
+        userId,
+        { status: "offline", socketId: "" },
+        { new: true }
+      );
+
+      const findedGame = await GameSchema.findById(gameId);
+
+      if (findedGame) {
+        console.log(`Found game ${gameId}. Processing user ${userId} leaving.`);
+        const winner =
+          findedGame.player1.toString() === userId
+            ? findedGame.player2
+            : findedGame.player1;
+        const loser = userId;
 
         await UserSchema.findByIdAndUpdate(
-            userId,
-            { status: "offline", socketId: "" },
-            { new: true }
+          winner,
+          { $inc: { wins: 1 }, status: "online" },
+          { new: true }
         );
 
-        const findedGame = await GameSchema.findById(gameId);
+        await UserSchema.findByIdAndUpdate(
+          loser,
+          { $inc: { losses: 1 }, status: "offline" },
+          { new: true }
+        );
 
-        if (findedGame) {
-            console.log(`Found game ${gameId}. Processing user ${userId} leaving.`);
-            const winner =
-                findedGame.player1.toString() === userId
-                    ? findedGame.player2
-                    : findedGame.player1;
-            const loser = userId;
+        const updatedGame = await GameSchema.findByIdAndUpdate(findedGame._id, {
+          status: "aborted",
+          winner,
+        });
 
-            await UserSchema.findByIdAndUpdate(
-                winner,
-                { $inc: { wins: 1 }, status: "online" },
-                { new: true }
-            );
-
-            await UserSchema.findByIdAndUpdate(
-                loser,
-                { $inc: { losses: 1 }, status: "offline" },
-                { new: true }
-            );
-
-            const updatedGame = await GameSchema.findByIdAndUpdate(findedGame._id, {
-                status: "aborted",
-                winner,
-            });
-
-            io.to(gameId).emit("gameAborted", updatedGame);
-            console.log(`Game ${gameId} was aborted due to user ${userId} leaving.`);
-        } else {
-            console.log(`Game ${gameId} not found for user ${userId}`);
-        }
+        io.to(gameId).emit("gameAborted", updatedGame);
+        console.log(`Game ${gameId} was aborted due to user ${userId} leaving.`);
+      } else {
+        console.log(`Game ${gameId} not found for user ${userId}`);
+      }
     } catch (error) {
-        console.error(`Error handling user ${userId} leaving game ${gameId}:`, error);
+      console.error(`Error handling user ${userId} leaving game ${gameId}:`, error);
     }
   });
 
@@ -202,7 +202,12 @@ io.on("connection", (socket) => {
 
     await game.save();
 
-    io.to(gameId).emit("roundSubmitted", game);
+    // Populate before emitting
+    const populatedGame = await GameSchema.findById(game._id)
+      .populate('player1', 'username')
+      .populate('player2', 'username');
+
+    io.to(gameId).emit("roundSubmitted", populatedGame);
 
     // Check if both players have submitted
     const coinSelection = game.coinSelections.find(
@@ -218,25 +223,25 @@ io.on("connection", (socket) => {
     }
   });
 
-    // Handle user disconnect
-    socket.on("disconnect", async () => {
-      try {
-          console.log(`User with socket ID ${socketId} disconnected`);
+  // Handle user disconnect
+  socket.on("disconnect", async () => {
+    try {
+      console.log(`User with socket ID ${socketId} disconnected`);
 
-          const disconnectedUser = await UserSchema.findOneAndUpdate(
-              { socketId },
-              { status: "offline", socketId: "" },
-              { new: true }
-          );
+      const disconnectedUser = await UserSchema.findOneAndUpdate(
+        { socketId },
+        { status: "offline", socketId: "" },
+        { new: true }
+      );
 
-          if (disconnectedUser) {
-              console.log(`User ${disconnectedUser.username} status updated to offline.`);
-          } else {
-              console.log(`User with socket ID ${socketId} disconnected, but no user was found in the database.`);
-          }
-      } catch (error) {
-          console.error('Error handling disconnect:', error);
+      if (disconnectedUser) {
+        console.log(`User ${disconnectedUser.username} status updated to offline.`);
+      } else {
+        console.log(`User with socket ID ${socketId} disconnected, but no user was found in the database.`);
       }
+    } catch (error) {
+      console.error('Error handling disconnect:', error);
+    }
   });
 });
 
