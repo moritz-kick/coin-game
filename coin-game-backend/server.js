@@ -113,7 +113,7 @@ io.on("connection", (socket) => {
         const updatedGame = await GameSchema.findByIdAndUpdate(findedGame._id, {
           status: "aborted",
           winner,
-        });
+        }).populate('player1', 'username').populate('player2', 'username').populate('winner', 'username');
 
         io.to(gameId).emit("gameAborted", updatedGame);
         console.log(`Game ${gameId} was aborted due to user ${userId} leaving.`);
@@ -173,7 +173,11 @@ io.on("connection", (socket) => {
           status: "in-game",
         });
 
-        io.to(gameID).emit("gameCreated", { gameId: gameID });
+        const populatedGame = await GameSchema.findById(gameID)
+          .populate('player1', 'username')
+          .populate('player2', 'username');
+
+        io.to(gameID).emit("gameCreated", { gameId: gameID, game: populatedGame });
       } catch (err) {
         console.log(err);
       }
@@ -182,44 +186,56 @@ io.on("connection", (socket) => {
 
   // Handle round submissions
   socket.on("submitRound", async ({ gameId, actionBy, selection }) => {
-    const game = await GameSchema.findById(gameId);
+    try {
+      const game = await GameSchema.findById(gameId);
 
-    if (!game) return;
+      if (!game) {
+        socket.emit("error", { message: "Game not found" });
+        return;
+      }
 
-    if (actionBy === "coin-player") {
-      game.coinSelections.push({
-        round: game.currentRound,
-        coins: +selection ?? 0,
-        match: game.currentMatch,
-      });
-    } else {
-      game.guesses.push({
-        round: game.currentRound,
-        guess: +selection ?? 0,
-        match: game.currentMatch,
-      });
-    }
+      if (actionBy === "coin-player") {
+        game.coinSelections.push({
+          round: game.currentRound,
+          coins: +selection ?? 0,
+          match: game.currentMatch,
+        });
+      } else if (actionBy === "estimator") {
+        game.guesses.push({
+          round: game.currentRound,
+          guess: +selection ?? 0,
+          match: game.currentMatch,
+        });
+      } else {
+        socket.emit("error", { message: "Invalid actionBy value" });
+        return;
+      }
 
-    await game.save();
+      await game.save();
 
-    // Populate before emitting
-    const populatedGame = await GameSchema.findById(game._id)
-      .populate('player1', 'username')
-      .populate('player2', 'username');
+      // Populate player1, player2, and winner before emitting
+      const populatedGame = await GameSchema.findById(gameId)
+        .populate('player1', 'username')
+        .populate('player2', 'username')
+        .populate('winner', 'username');
 
-    io.to(gameId).emit("roundSubmitted", populatedGame);
+      io.to(gameId).emit("roundSubmitted", populatedGame);
 
-    // Check if both players have submitted
-    const coinSelection = game.coinSelections.find(
-      (cs) => cs.round === game.currentRound && cs.match === game.currentMatch
-    );
-    const guess = game.guesses.find(
-      (g) => g.round === game.currentRound && g.match === game.currentMatch
-    );
+      // Check if both players have submitted
+      const coinSelection = game.coinSelections.find(
+        (cs) => cs.round === game.currentRound && cs.match === game.currentMatch
+      );
+      const guess = game.guesses.find(
+        (g) => g.round === game.currentRound && g.match === game.currentMatch
+      );
 
-    if (coinSelection && guess) {
-      // Process round outcome
-      await processRoundOutcome(game, io);
+      if (coinSelection && guess) {
+        // Process round outcome
+        await processRoundOutcome(game, io);
+      }
+    } catch (error) {
+      console.error(error);
+      socket.emit("error", { message: error.message });
     }
   });
 
@@ -354,14 +370,25 @@ const processRoundOutcome = async (game, io) => {
       game.status = "completed";
       await game.save();
 
-      io.to(game._id.toString()).emit("gameCompleted", game);
+      const populatedGame = await GameSchema.findById(game._id)
+        .populate('player1', 'username')
+        .populate('player2', 'username')
+        .populate('winner', 'username');
+
+      io.to(game._id.toString()).emit("gameCompleted", populatedGame);
     } else {
       await game.save();
-      io.to(game._id.toString()).emit("matchCompleted", game);
+      const populatedGame = await GameSchema.findById(game._id)
+        .populate('player1', 'username')
+        .populate('player2', 'username');
+      io.to(game._id.toString()).emit("matchCompleted", populatedGame);
     }
   } else {
     await game.save();
-    io.to(game._id.toString()).emit("roundChanged", game);
+    const populatedGame = await GameSchema.findById(game._id)
+      .populate('player1', 'username')
+      .populate('player2', 'username');
+    io.to(game._id.toString()).emit("roundChanged", populatedGame);
   }
 };
 
