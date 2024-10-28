@@ -20,6 +20,8 @@ import {
 import ImageSwiper from "@/components/ui/swiper";
 import { useAppContext } from "@/context/AppContext";
 import { toast } from "sonner";
+import estimatorImage from "@/images/webanwendung_pcg_estimator.png";
+import gameInviteImage from "@/images/gameinvite.png";
 
 export default function Home() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -59,8 +61,8 @@ export default function Home() {
   };
 
   const images = [
-    { src: "./images/webanwendung_pcg_estimator.png", alt: "Estimators move in Round 1" },
-    { src: "./images/gameinvite.png", alt: "Game invite and Match number selection" },
+    { src: estimatorImage, alt: "Estimators move in Round 1" },
+    { src: gameInviteImage, alt: "Game invite and Match number selection" },
   ];
 
   return (
