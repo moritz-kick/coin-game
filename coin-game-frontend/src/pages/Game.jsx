@@ -243,10 +243,26 @@ export default function Game() {
     });
 
     socket?.on("gameCompleted", (game) => {
-      const winnerId = game.winner;
-      const isUserWinner = winnerId.toString() === user._id.toString();
-      toast.success(`Game Completed! You ${isUserWinner ? "Won" : "Lost"}`);
-      // toast.success("Game Completed");
+      const myUserId = user._id;
+    
+      // Count matches won and lost by the user
+      let matchesWon = 0;
+      let matchesLost = 0;
+    
+      game.matchWinners.forEach((match) => {
+        if (match.winner && match.winner.toString() === myUserId.toString()) {
+          matchesWon++;
+        } else {
+          matchesLost++;
+        }
+      });
+    
+      // Display the result message
+      toast.success(
+        `Game Completed! You won ${matchesWon} ${matchesWon === 1 ? "match" : "matches"} and lost ${matchesLost} ${matchesLost === 1 ? "match" : "matches"}.`
+      );
+    
+      // Navigate to the scoreboard or another page
       navigate("/scoreboard");
     });
 
