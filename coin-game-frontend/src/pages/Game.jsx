@@ -76,7 +76,6 @@ export default function Game() {
   const [selectedCoins, setSelectedCoins] = useState(null);
   const [guess, setGuess] = useState(null);
   const [submitted, setSubmitted] = useState(false);
-
   const [validChoices, setValidChoices] = useState([0, 1, 2, 3, 4, 5]);
 
   const { user } = useAppContext();
@@ -121,41 +120,85 @@ export default function Game() {
 
   useEffect(() => {
     if (!gameState) return;
-    if (gameState?.timer > 0 && gameState?.status === "in-progress") {
-      const timerId = setTimeout(() => {
-        setGameState((prevState) => ({
-          ...prevState,
-          timer: prevState.timer - 1,
-        }));
-      }, 1000);
-      return () => clearTimeout(timerId);
-    } else if (gameState.timer === 0) {
-      // Handle time's up scenario
-      handleTimeUp();
-    }
-  }, [gameState?.timer, gameState?.status]);
 
-  useEffect(() => {
-    if (gameState && gameState.currentRound > 1) {
-      // Get last coin selection made by coin-player in the previous round
-      const lastSelection =
-        gameState.coinSelections.find(
-          (cs) =>
-            cs.round === gameState.currentRound - 1 &&
-            cs.match === gameState.currentMatch
-        )?.coins;
+    const currentRound = gameState.currentRound;
+    const currentMatch = gameState.currentMatch;
 
-      // Filter the strategies to only those that match the previous round's selection
-      const nextStrategies = strategies.filter((s) => s[0] === lastSelection);
+    // Check if 0 has already been played
+    const zeroPlayed = gameState.coinSelections.some(
+      (cs) => cs.coins === 0 && cs.match === currentMatch
+    );
 
-      // Extract the second coin value from the filtered strategies
-      const nextValidChoices = [...new Set(nextStrategies.map((s) => s[1]))];
-
-      // Update valid choices for the next round
-      setValidChoices(nextValidChoices);
-    } else {
-      // Reset valid choices for the first round
+    if (currentRound === 1) {
+      // First round: any number from 0 to 5
       setValidChoices([0, 1, 2, 3, 4, 5]);
+    } else if (currentRound === 2) {
+      // Second round
+      const selectionRound1 = gameState.coinSelections.find(
+        (cs) => cs.round === 1 && cs.match === currentMatch
+      )?.coins;
+
+      // Valid choices:
+      // - Numbers greater than selection in Round 1
+      // - 0 (if not already played)
+      // - 5 (always allowed)
+      const validChoices = [];
+
+      for (let num = selectionRound1 + 1; num <= 5; num++) {
+        validChoices.push(num);
+      }
+
+      if (!zeroPlayed) {
+        validChoices.push(0); // 0 can be played once
+      }
+
+      if (!validChoices.includes(5)) {
+        validChoices.push(5); // Ensure 5 is included
+      }
+
+      setValidChoices(Array.from(new Set(validChoices)));
+    } else if (currentRound === 3) {
+      // Third round
+      const selectionRound1 = gameState.coinSelections.find(
+        (cs) => cs.round === 1 && cs.match === currentMatch
+      )?.coins;
+      const selectionRound2 = gameState.coinSelections.find(
+        (cs) => cs.round === 2 && cs.match === currentMatch
+      )?.coins;
+
+      if (selectionRound2 === 0) {
+        // If 0 was selected in Round 2
+        // Valid choices are numbers higher than selection in Round 1 or 5 again
+        const validChoices = [];
+
+        for (let num = selectionRound1 + 1; num <= 5; num++) {
+          validChoices.push(num);
+        }
+
+        validChoices.push(5); // 5 can always be played
+
+        setValidChoices(Array.from(new Set(validChoices)));
+      } else {
+        // Valid choices:
+        // - Numbers greater than selection in Round 2
+        // - 0 (if not already played)
+        // - 5 (always allowed)
+        const validChoices = [];
+
+        for (let num = selectionRound2 + 1; num <= 5; num++) {
+          validChoices.push(num);
+        }
+
+        if (!zeroPlayed) {
+          validChoices.push(0); // 0 can be played once
+        }
+
+        if (!validChoices.includes(5)) {
+          validChoices.push(5); // Ensure 5 is included
+        }
+      // Reset valid choices for the first round
+        setValidChoices(Array.from(new Set(validChoices)));
+      }
     }
   }, [gameState]);
 
@@ -259,7 +302,14 @@ export default function Game() {
     
       // Display the result message
       toast.success(
-        `Game Completed! You won ${matchesWon} ${matchesWon === 1 ? "match" : "matches"} and lost ${matchesLost} ${matchesLost === 1 ? "match" : "matches"}.`
+        `Game Completed! You won ${matchesWon} ${
+          matchesWon === 1 ? "match" : "matches"
+        } and lost ${matchesLost} ${
+          matchesLost === 1 ? "match" : "matches"
+        }.`,
+        {
+          duration: 10000,
+        }
       );
     
       // Navigate to the scoreboard or another page
