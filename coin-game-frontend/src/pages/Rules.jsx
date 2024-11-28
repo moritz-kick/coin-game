@@ -42,10 +42,10 @@ export default function Rules() {
             </section>
             <section>
               <h2 className="text-xl font-semibold">Gameplay</h2>
-              <p>The game consists of a maximum of 3 rounds. In each round:</p>
+              <p>The game consists of a maximum of <strong>3 rounds</strong>. In each round:</p>
               <ol className="list-decimal list-inside ml-4">
-                <li>The Coin Player secretly chooses between 0 and 5 coins.</li>
-                <li>The Guesser attempts to guess the number of coins chosen.</li>
+                <li>The Coin Player secretly <strong>chooses</strong> between 0 and 5 coins.</li>
+                <li>The Guesser attempts to <strong>guess</strong> the number of coins chosen.</li>
                 <li>The Coin Player reveals the chosen coins at the end of each round.</li>
               </ol>
             </section>
@@ -53,11 +53,11 @@ export default function Rules() {
               <h2 className="text-xl font-semibold">Rules for Coin Selection</h2>
               <ul className="list-disc list-inside">
                 <li>
-                  The number of coins chosen must increase from round to round, with the following exceptions:
+                  The number of coins chosen <strong>must increase</strong> from round to round, with the following exceptions:
                   <ul className="list-disc list-inside ml-4">
-                    <li>If 5 coins are chosen, the number remains the same in the next round.</li>
-                    <li>The Coin Player is allowed to choose 0 coins once per game.</li>
-                    <li>After a 0-coin round, the next choice must exceed the last non-zero choice.</li>
+                    <li>If <strong>5</strong> coins are chosen, <strong>5</strong> can be choosen in the <strong>next round again</strong> .</li>
+                    <li>The Coin Player is allowed to choose <strong>0</strong> coins once per game in <strong>any round</strong>.</li>
+                    <li>After a <strong>0-coin</strong> round, the next choice must be <strong>higher than the last non-zero choice</strong>.</li>
                   </ul>
                 </li>
               </ul>
