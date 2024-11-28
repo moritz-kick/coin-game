@@ -266,7 +266,7 @@ const processRoundOutcome = async (game, io) => {
   const currentRound = game.currentRound;
   const currentMatch = game.currentMatch;
 
-  // Determine if the guess was correct
+  // Retrieve the current coin selection and guess
   const coinSelection = game.coinSelections.find(
     (cs) => cs.round === currentRound && cs.match === currentMatch
   );
@@ -274,36 +274,37 @@ const processRoundOutcome = async (game, io) => {
     (g) => g.round === currentRound && g.match === currentMatch
   );
 
+  // Flag to determine if the match has ended
+  let matchEnded = false;
+  let matchWinner = null;
+
+  // Check if the estimator guessed correctly
   if (coinSelection.coins === guess.guess) {
-    // Estimator wins the round
+    // Estimator wins the match immediately
     if (game.player1Role === "estimator") {
-      game.player1Score += 1;
+      matchWinner = game.player1;
     } else {
-      game.player2Score += 1;
+      matchWinner = game.player2;
     }
+    matchEnded = true;
   } else {
-    // Coin player wins the round
-    if (game.player1Role === "coin-player") {
-      game.player1Score += 1;
-    } else {
-      game.player2Score += 1;
+    // Estimator did not guess correctly, increment the round
+    game.currentRound += 1;
+
+    // Check if maximum rounds have been reached
+    if (game.currentRound > game.rounds) {
+      // Coin player wins the match
+      if (game.player1Role === "coin-player") {
+        matchWinner = game.player1;
+      } else {
+        matchWinner = game.player2;
+      }
+      matchEnded = true;
     }
   }
 
-  // Update current round
-  game.currentRound += 1;
-
-  // Check if match is over
-  if (game.currentRound > game.rounds) {
-    // Determine match winner
-    let matchWinner = null;
-
-    if (game.player1Score > game.player2Score) {
-      matchWinner = game.player1;
-    } else if (game.player2Score > game.player1Score) {
-      matchWinner = game.player2;
-    }
-
+  if (matchEnded) {
+    // Record the match winner
     game.matchWinners.push({
       match: currentMatch,
       winner: matchWinner,
@@ -326,22 +327,20 @@ const processRoundOutcome = async (game, io) => {
       });
     }
 
-    // Reset scores for next match
+    // Reset scores and swap roles for next match
     game.player1Score = 0;
     game.player2Score = 0;
-
-    // Swap roles
     const tempRole = game.player1Role;
     game.player1Role = game.player2Role;
     game.player2Role = tempRole;
 
-    // Update current match
+    // Move to the next match
     game.currentMatch += 1;
     game.currentRound = 1;
 
     // Check if game is over
     if (game.currentMatch > game.matches) {
-      // Determine overall game winner for display purposes
+      // Determine overall game winner based on match wins
       let player1Wins = game.matchWinners.filter(
         (w) => w.winner && w.winner.toString() === game.player1.toString()
       ).length;
@@ -358,6 +357,7 @@ const processRoundOutcome = async (game, io) => {
       game.status = "completed";
       await game.save();
 
+      // Notify clients that the game is completed
       const populatedGame = await GameSchema.findById(game._id)
         .populate('player1', 'username')
         .populate('player2', 'username')
@@ -365,6 +365,7 @@ const processRoundOutcome = async (game, io) => {
 
       io.to(game._id.toString()).emit("gameCompleted", populatedGame);
     } else {
+      // Save the game and notify clients that the match is completed
       await game.save();
       const populatedGame = await GameSchema.findById(game._id)
         .populate('player1', 'username')
@@ -372,6 +373,7 @@ const processRoundOutcome = async (game, io) => {
       io.to(game._id.toString()).emit("matchCompleted", populatedGame);
     }
   } else {
+    // If the match hasn't ended, save the game and proceed to the next round
     await game.save();
     const populatedGame = await GameSchema.findById(game._id)
       .populate('player1', 'username')
