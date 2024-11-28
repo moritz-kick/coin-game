@@ -35,9 +35,10 @@ export default function Home() {
   const { user, deleteUserAccount, changeUsername } = useAppContext();
 
   const handlePlayAI = () => {
-    navigate(
-      `/game-vs-ai?difficulty=${selectedDifficulty}&matches=${selectedMatches}`
-    );
+    // navigate(
+    //   `/game-vs-ai?difficulty=${selectedDifficulty}&matches=${selectedMatches}`
+    // );
+    toast("Coming soon! Stay tuned for the AI mode.");
   };
 
   const handleDeleteAccount = () => {
@@ -77,8 +78,8 @@ export default function Home() {
             Patrik's Coin Game is a two-player game where one player <strong>hides coins </strong> and the other <strong>tries to guess</strong> the number.
           </p>
           <div className="mt-4 space-x-4">
-            {/* AI Game Dialog */}
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            {/* AI Game Dialog Not Ready */}
+            {/* <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button>Play Against AI</Button>
               </DialogTrigger>
@@ -118,6 +119,23 @@ export default function Home() {
                 </div>
                 <DialogFooter>
                   <Button onClick={handlePlayAI}>Start Game</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog> */}
+            {/* AI Game Dialog Meanwhile */}
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>Play Against AI</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Feature Coming Soon</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <p>The AI mode is currently under development and will be available soon!</p>
+                </div>
+                <DialogFooter>
+                  <Button onClick={() => setIsDialogOpen(false)}>Close</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>

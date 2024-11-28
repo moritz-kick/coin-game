@@ -15,7 +15,7 @@ import { API, showErrorToast } from "@/lib/utils";
 
 export default function Scoreboard() {
   const [scores, setScores] = useState([]);
-  const [sortColumn, setSortColumn] = useState("winRate");
+  const [sortColumn, setSortColumn] = useState("wins");
   const [sortDirection, setSortDirection] = useState("desc");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -51,9 +51,41 @@ export default function Scoreboard() {
   };
 
   const sortedScores = [...scores].sort((a, b) => {
-    if (a[sortColumn] < b[sortColumn]) return sortDirection === "asc" ? -1 : 1;
-    if (a[sortColumn] > b[sortColumn]) return sortDirection === "asc" ? 1 : -1;
-    return 0;
+    let comparison = 0;
+
+    if (sortColumn === "winRate") {
+      // Compare win rates
+      if (a.winRate !== b.winRate) {
+        comparison = sortDirection === "asc" ? a.winRate - b.winRate : b.winRate - a.winRate;
+      } else {
+        // If win rates are equal, compare total games played
+        const aTotalGames = a.wins + a.losses;
+        const bTotalGames = b.wins + b.losses;
+        comparison = bTotalGames - aTotalGames; // Player with more games comes first
+      }
+    } else if (sortColumn === "wins") {
+      // Compare wins
+      if (a.wins !== b.wins) {
+        comparison = sortDirection === "asc" ? a.wins - b.wins : b.wins - a.wins;
+      } else {
+        // If wins are equal, compare win rates
+        if (a.winRate !== b.winRate) {
+          comparison = sortDirection === "asc" ? a.winRate - b.winRate : b.winRate - a.winRate;
+        } else {
+          // If win rates are also equal, compare total games played
+          const aTotalGames = a.wins + a.losses;
+          const bTotalGames = b.wins + b.losses;
+          comparison = bTotalGames - aTotalGames;
+        }
+      }
+    } else {
+      // Default comparison for other columns
+      if (a[sortColumn] < b[sortColumn]) comparison = sortDirection === "asc" ? -1 : 1;
+      else if (a[sortColumn] > b[sortColumn]) comparison = sortDirection === "asc" ? 1 : -1;
+      else comparison = 0;
+    }
+
+    return comparison;
   });
 
   const filteredScores = sortedScores.filter((score) =>

@@ -112,8 +112,7 @@ export default function Rules() {
 
           {/* Caption */}
           <p className="mt-4 text-center text-sm italic">
-            Yes, folks, you're watching the legendary Patrik himself explain his genius game. 
-            Don't blink, or you might miss his mind-blowing strategies ;)
+            Yes, folks, you're watching the legendary Patrik himself explain his genius game. ;)
           </p>
         </div>
       </Card>
