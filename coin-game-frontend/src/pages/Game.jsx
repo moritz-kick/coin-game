@@ -243,7 +243,10 @@ export default function Game() {
     });
 
     socket?.on("gameCompleted", (game) => {
-      toast.success("Game Completed");
+      const winnerId = game.winner;
+      const isUserWinner = winnerId.toString() === user._id.toString();
+      toast.success(`Game Completed! You ${isUserWinner ? "Won" : "Lost"}`);
+      // toast.success("Game Completed");
       navigate("/scoreboard");
     });
 
