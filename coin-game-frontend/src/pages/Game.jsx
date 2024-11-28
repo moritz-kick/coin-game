@@ -108,9 +108,7 @@ export default function Game() {
       let p1Score = 0;
       let p2Score = 0;
       gameState.matchWinners.forEach((match) => {
-        if (match.winner === null) {
-          // Draw, do nothing
-        } else if (match.winner.toString() === player1Id.toString()) {
+        if (match.winner.toString() === player1Id.toString()) {
           p1Score += 1;
         } else if (match.winner.toString() === player2Id.toString()) {
           p2Score += 1;
@@ -237,9 +235,7 @@ export default function Game() {
 
       if (!lastMatchWinner) return;
 
-      if (lastMatchWinner.winner === null) {
-        toast("Draw");
-      } else if (lastMatchWinner.winner === myUserId) {
+      if (lastMatchWinner.winner === myUserId) {
         toast("You Won");
       } else {
         toast("You Lose");

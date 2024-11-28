@@ -37,7 +37,7 @@ const createGame = async (req, res) => {
   }
 };
 
-// NEW FUNCTION: Create a game against AI
+// Create a game against AI
 const createAIGame = async (req, res) => {
   try {
     const player1Id = req.user.id;
@@ -142,7 +142,7 @@ const submitRound = async (socket, data) => {
   }
 };
 
-// NEW FUNCTION: Handle AI's move
+// Handle AI's move
 const handleAIMove = async (game, socket) => {
   const currentRound = game.currentRound;
   const currentMatch = game.currentMatch;
@@ -183,106 +183,6 @@ const getAISelection = async (game, role) => {
   return validChoices[randomIndex];
 };
 
-// Function to process round outcome
-const processRoundOutcome = async (game, socket) => {
-  const currentRound = game.currentRound;
-  const currentMatch = game.currentMatch;
-
-  // Implement logic to determine round winner, update scores, etc.
-
-  // For now, increment round or match
-  game.currentRound += 1;
-
-  if (game.currentRound > game.rounds) {
-    game.currentRound = 1;
-    game.currentMatch += 1;
-
-    // Determine match winner
-    const matchWinner = await determineMatchWinner(game);
-    game.matchWinners.push({
-      match: currentMatch,
-      winner: matchWinner,
-    });
-
-    // Swap roles
-    const tempRole = game.player1Role;
-    game.player1Role = game.player2Role;
-    game.player2Role = tempRole;
-
-    // Check if the currentMatch exceeds total matches
-    if (game.currentMatch > game.matches) {
-      game.status = "completed";
-      // Determine game winner
-      game.winner = await determineGameWinner(game);
-      // Emit 'gameCompleted' event
-      socket.to(game._id.toString()).emit("gameCompleted", game);
-    } else {
-      // Emit 'matchCompleted' event
-      socket.to(game._id.toString()).emit("matchCompleted", game);
-    }
-  } else {
-    // Emit 'roundChanged' to clients
-    socket.to(game._id.toString()).emit("roundChanged", game);
-  }
-
-  // Save game
-  await game.save();
-};
-
-// Placeholder function to determine match winner
-const determineMatchWinner = async (game) => {
-  // Implement your logic to determine the match winner
-  // For now, randomly select winner
-  const randomWinner =
-    Math.random() > 0.5 ? game.player1 : game.player2 || null;
-  return randomWinner;
-};
-
-// Placeholder function to determine game winner
-const determineGameWinner = async (game) => {
-  // Implement your logic to determine the overall game winner
-  // For now, randomly select winner
-  const randomWinner =
-    Math.random() > 0.5 ? game.player1 : game.player2 || null;
-
-  // Update user statistics
-  if (game.isAIGame) {
-    const user = await UserSchema.findById(game.player1);
-    if (randomWinner && randomWinner.toString() === game.player1.toString()) {
-      // Player won against AI
-      if (game.aiDifficulty === "Easy") {
-        user.aiEasyWins += 1;
-      } else {
-        user.aiHardWins += 1;
-      }
-    } else {
-      // Player lost against AI
-      if (game.aiDifficulty === "Easy") {
-        user.aiEasyLosses += 1;
-      } else {
-        user.aiHardLosses += 1;
-      }
-    }
-    await user.save();
-  } else {
-    // Update statistics for multiplayer games
-    const player1 = await UserSchema.findById(game.player1);
-    const player2 = await UserSchema.findById(game.player2);
-
-    if (randomWinner && randomWinner.toString() === game.player1.toString()) {
-      player1.wins += 1;
-      player2.losses += 1;
-    } else if (randomWinner) {
-      player2.wins += 1;
-      player1.losses += 1;
-    }
-
-    await player1.save();
-    await player2.save();
-  }
-
-  return randomWinner;
-};
 
 module.exports = {
   createGame,

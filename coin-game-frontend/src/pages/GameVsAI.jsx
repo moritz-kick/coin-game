@@ -219,8 +219,6 @@ export default function GameVsAI() {
       toast("You Won the Game!");
     } else if (playerScore < aiScore) {
       toast("You Lost the Game!");
-    } else {
-      toast("The Game is a Draw!");
     }
     // Redirect to scoreboard or home
     navigate("/scoreboard");

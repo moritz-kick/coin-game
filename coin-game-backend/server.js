@@ -274,8 +274,6 @@ const processRoundOutcome = async (game, io) => {
     (g) => g.round === currentRound && g.match === currentMatch
   );
 
-  let roundWinner = null;
-
   if (coinSelection.coins === guess.guess) {
     // Estimator wins the round
     if (game.player1Role === "estimator") {
@@ -304,14 +302,29 @@ const processRoundOutcome = async (game, io) => {
       matchWinner = game.player1;
     } else if (game.player2Score > game.player1Score) {
       matchWinner = game.player2;
-    } else {
-      matchWinner = null; // Draw
     }
 
     game.matchWinners.push({
       match: currentMatch,
       winner: matchWinner,
     });
+
+    // Update user stats after each match
+    if (matchWinner) {
+      // Increment the winner's wins
+      await UserSchema.findByIdAndUpdate(matchWinner, {
+        $inc: { wins: 1 },
+      });
+      // Identify the loser
+      const loser =
+        matchWinner.toString() === game.player1.toString()
+          ? game.player2
+          : game.player1;
+      // Increment the loser's losses
+      await UserSchema.findByIdAndUpdate(loser, {
+        $inc: { losses: 1 },
+      });
+    }
 
     // Reset scores for next match
     game.player1Score = 0;
@@ -328,7 +341,7 @@ const processRoundOutcome = async (game, io) => {
 
     // Check if game is over
     if (game.currentMatch > game.matches) {
-      // Determine game winner
+      // Determine overall game winner for display purposes
       let player1Wins = game.matchWinners.filter(
         (w) => w.winner && w.winner.toString() === game.player1.toString()
       ).length;
@@ -338,33 +351,8 @@ const processRoundOutcome = async (game, io) => {
 
       if (player1Wins > player2Wins) {
         game.winner = game.player1;
-        await UserSchema.findByIdAndUpdate(game.player1, {
-          $inc: { wins: 1 },
-          status: "online",
-        });
-        await UserSchema.findByIdAndUpdate(game.player2, {
-          $inc: { losses: 1 },
-          status: "online",
-        });
       } else if (player2Wins > player1Wins) {
         game.winner = game.player2;
-        await UserSchema.findByIdAndUpdate(game.player2, {
-          $inc: { wins: 1 },
-          status: "online",
-        });
-        await UserSchema.findByIdAndUpdate(game.player1, {
-          $inc: { losses: 1 },
-          status: "online",
-        });
-      } else {
-        // It's a draw
-        game.winner = null;
-        await UserSchema.findByIdAndUpdate(game.player1, {
-          status: "online",
-        });
-        await UserSchema.findByIdAndUpdate(game.player2, {
-          status: "online",
-        });
       }
 
       game.status = "completed";
