@@ -96,7 +96,7 @@ export default function Game() {
     })();
   }, [gameId]);
 
-  // NEW CODE: Player scores
+  // Player scores
   const [player1Score, setPlayer1Score] = useState(0);
   const [player2Score, setPlayer2Score] = useState(0);
 
@@ -117,6 +117,23 @@ export default function Game() {
       setPlayer2Score(p2Score);
     }
   }, [gameState]);
+
+  // Timer useEffect
+  useEffect(() => {
+    if (!gameState) return;
+    if (gameState?.timer > 0 && gameState?.status === "in-progress") {
+      const timerId = setTimeout(() => {
+        setGameState((prevState) => ({
+          ...prevState,
+          timer: prevState.timer - 1,
+        }));
+      }, 1000);
+      return () => clearTimeout(timerId);
+    } else if (gameState.timer === 0) {
+      // Handle time's up scenario
+      handleTimeUp();
+    }
+  }, [gameState?.timer, gameState?.status]);
 
   useEffect(() => {
     if (!gameState) return;
@@ -236,9 +253,7 @@ export default function Game() {
   };
 
   const handleTimeUp = () => {
-    socket.emit("changeRound", {
-      gameId,
-    });
+    socket.emit("playerTimeout", { gameId, userId: user._id });
   };
 
   useEffect(() => {
@@ -321,14 +336,31 @@ export default function Game() {
       navigate("/waiting-room");
     });
 
+    // Handle timeouts
+    socket?.on("gameAbortedDueToTimeout", (data) => {
+      toast.error(data.message);
+      navigate("/waiting-room");
+    });
+
+    socket?.on("gameCompletedDueToTimeout", ({ game, loserId }) => {
+      const isUserLoser = loserId === user._id;
+      toast.success(
+        `Game Completed! You ${isUserLoser ? "lost" : "won"} on time.`,
+        { duration: 10000 }
+      );
+      navigate("/scoreboard");
+    });
+
     return () => {
       socket.off("roundChanged");
       socket.off("matchCompleted");
       socket.off("gameCompleted");
       socket.off("roundSubmitted");
       socket.off("gameAborted");
+      socket.off("gameAbortedDueToTimeout");
+      socket.off("gameCompletedDueToTimeout");
     };
-  }, [socket]);
+  }, [socket, gameState, user._id, navigate]);
 
   useEffect(() => {
     let userConfirmed = false;
@@ -364,7 +396,7 @@ export default function Game() {
       window.removeEventListener("unload", handleUnload);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [socket, user]);
+  }, [socket, user, gameId]);
 
   const renderGameControls = () => {
     const guessedPlayerKey =
@@ -429,7 +461,7 @@ export default function Game() {
     }
   };
 
-  // NEW CODE: Extract previous round data
+  // Extract previous round data
   const previousRound = gameState ? gameState.currentRound - 1 : null;
 
   const previousCoinSelection =
@@ -477,7 +509,7 @@ export default function Game() {
               Match: {gameState?.currentMatch}/{gameState.matches}
             </span>
           </div>
-          {/* NEW CODE: Display previous round choices */}
+          {/* Display previous round choices */}
           {previousRound > 0 && (
             <div className="space-y-2">
               <h3 className="text-lg font-semibold">Last Picks</h3>

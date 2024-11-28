@@ -20,11 +20,13 @@ const io = socketIo(server, {
 });
 
 // CORS configuration
-app.use(cors({
-  origin: 'https://coin-game-five.vercel.app',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+app.use(
+  cors({
+    origin: "https://coin-game-five.vercel.app",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 // Logging middleware
 app.use((req, res, next) => {
@@ -55,7 +57,9 @@ io.on("connection", (socket) => {
   // Handle user joining the waiting room
   socket.on("joinWaitingRoom", async (userId) => {
     try {
-      console.log(`User ${userId} is joining the waiting room with socket ID: ${socketId}`);
+      console.log(
+        `User ${userId} is joining the waiting room with socket ID: ${socketId}`
+      );
       socket.join("waitingRoom");
       socket.join(userId);
 
@@ -66,7 +70,9 @@ io.on("connection", (socket) => {
       );
 
       if (updateUserStatus) {
-        console.log(`User ${userId} status updated to online with socket ID: ${socketId}`);
+        console.log(
+          `User ${userId} status updated to online with socket ID: ${socketId}`
+        );
       } else {
         console.log(`Failed to update status for user ${userId}`);
       }
@@ -91,7 +97,9 @@ io.on("connection", (socket) => {
       const findedGame = await GameSchema.findById(gameId);
 
       if (findedGame) {
-        console.log(`Found game ${gameId}. Processing user ${userId} leaving.`);
+        console.log(
+          `Found game ${gameId}. Processing user ${userId} leaving.`
+        );
         const winner =
           findedGame.player1.toString() === userId
             ? findedGame.player2
@@ -110,32 +118,46 @@ io.on("connection", (socket) => {
           { new: true }
         );
 
-        const updatedGame = await GameSchema.findByIdAndUpdate(findedGame._id, {
-          status: "aborted",
-          winner,
-        }).populate('player1', 'username').populate('player2', 'username').populate('winner', 'username');
+        const updatedGame = await GameSchema.findByIdAndUpdate(
+          findedGame._id,
+          {
+            status: "aborted",
+            winner,
+          }
+        )
+          .populate("player1", "username")
+          .populate("player2", "username")
+          .populate("winner", "username");
 
         io.to(gameId).emit("gameAborted", updatedGame);
-        console.log(`Game ${gameId} was aborted due to user ${userId} leaving.`);
+        console.log(
+          `Game ${gameId} was aborted due to user ${userId} leaving.`
+        );
       } else {
         console.log(`Game ${gameId} not found for user ${userId}`);
       }
     } catch (error) {
-      console.error(`Error handling user ${userId} leaving game ${gameId}:`, error);
+      console.error(
+        `Error handling user ${userId} leaving game ${gameId}:`,
+        error
+      );
     }
   });
 
   // Handle challenge requests
-  socket.on("challengeUser", async ({ challengerId, challengedId, matches }) => {
-    const challenger = await UserSchema.findById(challengerId);
-    const challenged = await UserSchema.findById(challengedId);
+  socket.on(
+    "challengeUser",
+    async ({ challengerId, challengedId, matches }) => {
+      const challenger = await UserSchema.findById(challengerId);
+      const challenged = await UserSchema.findById(challengedId);
 
-    io.to(challenged.socketId).emit("challengeReceived", {
-      challenger,
-      challenged,
-      matches,
-    });
-  });
+      io.to(challenged.socketId).emit("challengeReceived", {
+        challenger,
+        challenged,
+        matches,
+      });
+    }
+  );
 
   // Handle acceptance of challenge
   socket.on(
@@ -174,10 +196,13 @@ io.on("connection", (socket) => {
         });
 
         const populatedGame = await GameSchema.findById(gameID)
-          .populate('player1', 'username')
-          .populate('player2', 'username');
+          .populate("player1", "username")
+          .populate("player2", "username");
 
-        io.to(gameID).emit("gameCreated", { gameId: gameID, game: populatedGame });
+        io.to(gameID).emit("gameCreated", {
+          gameId: gameID,
+          game: populatedGame,
+        });
       } catch (err) {
         console.log(err);
       }
@@ -215,23 +240,102 @@ io.on("connection", (socket) => {
 
       // Populate player1, player2, and winner before emitting
       const populatedGame = await GameSchema.findById(gameId)
-        .populate('player1', 'username')
-        .populate('player2', 'username')
-        .populate('winner', 'username');
+        .populate("player1", "username")
+        .populate("player2", "username")
+        .populate("winner", "username");
 
       io.to(gameId).emit("roundSubmitted", populatedGame);
 
       // Check if both players have submitted
       const coinSelection = game.coinSelections.find(
-        (cs) => cs.round === game.currentRound && cs.match === game.currentMatch
+        (cs) =>
+          cs.round === game.currentRound && cs.match === game.currentMatch
       );
       const guess = game.guesses.find(
-        (g) => g.round === game.currentRound && g.match === game.currentMatch
+        (g) =>
+          g.round === game.currentRound && g.match === game.currentMatch
       );
 
       if (coinSelection && guess) {
         // Process round outcome
         await processRoundOutcome(game, io);
+      }
+    } catch (error) {
+      console.error(error);
+      socket.emit("error", { message: error.message });
+    }
+  });
+
+  // Handle player timeout
+  socket.on("playerTimeout", async ({ gameId, userId }) => {
+    try {
+      const game = await GameSchema.findById(gameId);
+      if (!game) {
+        socket.emit("error", { message: "Game not found" });
+        return;
+      }
+
+      // Record that this player has timed out for the current round
+      if (!game.timeouts) {
+        game.timeouts = {};
+      }
+      if (!game.timeouts[game.currentRound]) {
+        game.timeouts[game.currentRound] = {};
+      }
+      game.timeouts[game.currentRound][userId] = true;
+
+      // Check if both players have timed out in this round
+      const player1Id = game.player1.toString();
+      const player2Id = game.player2.toString();
+
+      const player1TimedOut =
+        game.timeouts[game.currentRound][player1Id] || false;
+      const player2TimedOut =
+        game.timeouts[game.currentRound][player2Id] || false;
+
+      if (player1TimedOut && player2TimedOut) {
+        // Both players timed out
+        game.status = "aborted";
+        await game.save();
+
+        // Notify clients
+        io.to(gameId).emit("gameAbortedDueToTimeout", {
+          message: "Both players didn't play in time",
+        });
+
+        // Update user statuses
+        await UserSchema.findByIdAndUpdate(game.player1, { status: "online" });
+        await UserSchema.findByIdAndUpdate(game.player2, { status: "online" });
+      } else if (player1TimedOut || player2TimedOut) {
+        // One player timed out
+        const winner = player1TimedOut ? game.player2 : game.player1;
+        const loser = player1TimedOut ? game.player1 : game.player2;
+
+        // Update game status
+        game.status = "completed";
+        game.winner = winner;
+        await game.save();
+
+        // Update user stats
+        await UserSchema.findByIdAndUpdate(winner, {
+          $inc: { wins: 1 },
+          status: "online",
+        });
+        await UserSchema.findByIdAndUpdate(loser, {
+          $inc: { losses: 1 },
+          status: "online",
+        });
+
+        // Notify clients
+        const populatedGame = await GameSchema.findById(gameId)
+          .populate("player1", "username")
+          .populate("player2", "username")
+          .populate("winner", "username");
+
+        io.to(gameId).emit("gameCompletedDueToTimeout", {
+          game: populatedGame,
+          loserId: loser.toString(),
+        });
       }
     } catch (error) {
       console.error(error);
@@ -251,12 +355,16 @@ io.on("connection", (socket) => {
       );
 
       if (disconnectedUser) {
-        console.log(`User ${disconnectedUser.username} status updated to offline.`);
+        console.log(
+          `User ${disconnectedUser.username} status updated to offline.`
+        );
       } else {
-        console.log(`User with socket ID ${socketId} disconnected, but no user was found in the database.`);
+        console.log(
+          `User with socket ID ${socketId} disconnected, but no user was found in the database.`
+        );
       }
     } catch (error) {
-      console.error('Error handling disconnect:', error);
+      console.error("Error handling disconnect:", error);
     }
   });
 });
@@ -359,25 +467,25 @@ const processRoundOutcome = async (game, io) => {
 
       // Notify clients that the game is completed
       const populatedGame = await GameSchema.findById(game._id)
-        .populate('player1', 'username')
-        .populate('player2', 'username')
-        .populate('winner', 'username');
+        .populate("player1", "username")
+        .populate("player2", "username")
+        .populate("winner", "username");
 
       io.to(game._id.toString()).emit("gameCompleted", populatedGame);
     } else {
       // Save the game and notify clients that the match is completed
       await game.save();
       const populatedGame = await GameSchema.findById(game._id)
-        .populate('player1', 'username')
-        .populate('player2', 'username');
+        .populate("player1", "username")
+        .populate("player2", "username");
       io.to(game._id.toString()).emit("matchCompleted", populatedGame);
     }
   } else {
     // If the match hasn't ended, save the game and proceed to the next round
     await game.save();
     const populatedGame = await GameSchema.findById(game._id)
-      .populate('player1', 'username')
-      .populate('player2', 'username');
+      .populate("player1", "username")
+      .populate("player2", "username");
     io.to(game._id.toString()).emit("roundChanged", populatedGame);
   }
 };

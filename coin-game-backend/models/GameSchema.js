@@ -82,6 +82,11 @@ const GameSchema = new mongoose.Schema({
     type: String,
     enum: ["Easy", "Hard"],
   },
+  timeouts: {
+    type: Map,
+    of: Map,
+    default: {},
+  },
 });
 
 module.exports = mongoose.model("Game", GameSchema);
