@@ -42,15 +42,25 @@ const createGame = async (req, res) => {
 const createAIGame = async (req, res) => {
   try {
     const player1Id = req.user.id;
-    const { matches } = req.body;
+    const { difficulty, matches } = req.body;
 
     // Randomly assign roles
     const roles = ["coin-player", "estimator"];
     const randomIndex = Math.floor(Math.random() * 2);
     const player1Role = roles[randomIndex];
 
+    // Find the AI user
+    const aiUser = await UserSchema.findOne({ deviceId: "AI" });
+    if (!aiUser) {
+      console.error('AI user not found');
+      throw new Error("AI user not found");
+    }
+
+    console.log('AI user found:', aiUser);
+
     const game = await GameSchema.create({
       player1: player1Id,
+      player2: aiUser._id,
       matches: matches || 3,
       player1Role: player1Role,
       player2Role: player1Role === "coin-player" ? "estimator" : "coin-player",
@@ -58,10 +68,13 @@ const createAIGame = async (req, res) => {
       aiDifficulty: "Standard",
     });
 
+    console.log('Game created:', game);
+
     res.status(200).json({
       game,
     });
   } catch (error) {
+    console.error('Error in createAIGame:', error);
     res.status(500).json({
       error: error.message,
     });

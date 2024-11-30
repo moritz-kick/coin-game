@@ -54,7 +54,10 @@ export default function Home() {
     try {
       const { data } = await API.post("/game/create-ai-game", {
         matches: selectedMatches[0],
+<<<<<<< HEAD
         // Since there's only one AI mode, we can set it to a fixed value, e.g., "Standard"
+=======
+>>>>>>> d8a95b8 (New AI Changes, I hope it works now)
         aiDifficulty: "Standard",
       });
 
@@ -65,7 +68,11 @@ export default function Home() {
         throw new Error("Invalid response from server");
       }
     } catch (error) {
+<<<<<<< HEAD
       console.error("Error starting AI game:", error);
+=======
+      console.error("Error starting AI game:", error.response?.data || error.message || error);
+>>>>>>> d8a95b8 (New AI Changes, I hope it works now)
       toast.error("Failed to start AI game. Please try again.");
     } finally {
       setIsDialogOpen(false);
