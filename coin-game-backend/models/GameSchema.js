@@ -80,7 +80,7 @@ const GameSchema = new mongoose.Schema({
   },
   aiDifficulty: {
     type: String,
-    enum: ["Easy", "Hard"],
+    enum: ["Easy", "Hard", "Standard"],
   },
   timeouts: {
     type: Map,
