@@ -42,12 +42,15 @@ const createGame = async (req, res) => {
 const createAIGame = async (req, res) => {
   try {
     const player1Id = req.user.id;
-    const { difficulty, matches } = req.body;
+    const { matches } = req.body;
+
+    console.log('Creating AI game for player1Id:', player1Id);
 
     // Randomly assign roles
     const roles = ["coin-player", "estimator"];
     const randomIndex = Math.floor(Math.random() * 2);
     const player1Role = roles[randomIndex];
+    const player2Role = player1Role === "coin-player" ? "estimator" : "coin-player";
 
     // Find the AI user
     const aiUser = await UserSchema.findOne({ deviceId: "AI" });
@@ -63,21 +66,17 @@ const createAIGame = async (req, res) => {
       player2: aiUser._id,
       matches: matches || 3,
       player1Role: player1Role,
-      player2Role: player1Role === "coin-player" ? "estimator" : "coin-player",
+      player2Role: player2Role,
       isAIGame: true,
       aiDifficulty: "Standard",
     });
 
     console.log('Game created:', game);
 
-    res.status(200).json({
-      game,
-    });
+    res.status(200).json({ game });
   } catch (error) {
     console.error('Error in createAIGame:', error);
-    res.status(500).json({
-      error: error.message,
-    });
+    res.status(500).json({ error: error.message });
   }
 };
 

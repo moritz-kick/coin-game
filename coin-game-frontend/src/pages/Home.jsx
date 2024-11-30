@@ -64,7 +64,8 @@ export default function Home() {
         throw new Error("Invalid response from server");
       }
     } catch (error) {
-      console.log("Error starting AI game:", error.response?.data || error.message || error);
+      console.log("Caught an error while starting AI game:", error);
+      console.error("Error starting AI game:", error.response?.data || error.message || error);
       toast.error("Failed to start AI game. Please try again.");
     } finally {
       setIsDialogOpen(false);
