@@ -52,7 +52,7 @@ export default function Home() {
    */
   const startAIGame = async () => {
     try {
-      const { data } = await API.post("/game/create-ai-game", {
+      const { data } = await API().post("/game/create-ai-game", {
         matches: selectedMatches[0],
         aiDifficulty: "Standard",
       });
@@ -64,9 +64,8 @@ export default function Home() {
         throw new Error("Invalid response from server");
       }
     } catch (error) {
-      console.log("Caught an error while starting AI game:", error);
       console.error("Error starting AI game:", error.response?.data || error.message || error);
-      toast.error("Failed to start AI game. Please try again.");
+      toast.error(error.response?.data?.error || "Failed to start AI game. Please try again.");
     } finally {
       setIsDialogOpen(false);
     }
