@@ -1,3 +1,4 @@
+// server.js
 const express = require("express");
 const http = require("http");
 const mongoose = require("mongoose");
@@ -13,7 +14,6 @@ const {
   handleAIMove,
   processRoundOutcome,
 } = require("./controller/GameController");
-const { getAISelection } = require("./utils/aiUtils");
 
 dotenv.config();
 
@@ -255,66 +255,8 @@ io.on("connection", (socket) => {
     }
   );
 
-  // Handle round submissions
-  socket.on("submitRound", async ({ gameId, actionBy, selection }) => {
-    try {
-      const game = await GameSchema.findById(gameId);
-
-      if (!game) {
-        socket.emit("error", { message: "Game not found" });
-        return;
-      }
-
-      if (actionBy === "coin-player") {
-        game.coinSelections.push({
-          round: game.currentRound,
-          coins: +selection || 0,
-          match: game.currentMatch,
-        });
-      } else if (actionBy === "estimator") {
-        game.guesses.push({
-          round: game.currentRound,
-          guess: +selection || 0,
-          match: game.currentMatch,
-        });
-      } else {
-        socket.emit("error", { message: "Invalid actionBy value" });
-        return;
-      }
-
-      await game.save();
-
-      if (game.isAIGame) {
-        await handleAIMove(game, io);
-      } else {
-        // Populate player1, player2, and winner before emitting
-        const populatedGame = await GameSchema.findById(gameId)
-          .populate("player1", "username")
-          .populate("player2", "username")
-          .populate("winner", "username");
-
-        io.to(gameId).emit("roundSubmitted", populatedGame);
-
-        // Check if both players have submitted
-        const coinSelection = game.coinSelections.find(
-          (cs) =>
-            cs.round === game.currentRound && cs.match === game.currentMatch
-        );
-        const guess = game.guesses.find(
-          (g) =>
-            g.round === game.currentRound && g.match === game.currentMatch
-        );
-
-        if (coinSelection && guess) {
-          // Process round outcome
-          await processRoundOutcome(game, io);
-        }
-      }
-    } catch (error) {
-      console.error("Error in submitRound:", error);
-      socket.emit("error", { message: error.message });
-    }
-  });
+  // Handle round submissions using submitRound from GameController.js
+  socket.on("submitRound", (data) => submitRound(socket, data, io));
 
   // Handle player timeout
   socket.on("playerTimeout", async ({ gameId, userId }) => {
@@ -419,155 +361,7 @@ io.on("connection", (socket) => {
   });
 });
 
-// Function to process round outcome
-const processRoundOutcome = async (game, io) => {
-  const currentRound = game.currentRound;
-  const currentMatch = game.currentMatch;
-
-  // Retrieve the current coin selection and guess
-  const coinSelection = game.coinSelections.find(
-    (cs) => cs.round === currentRound && cs.match === currentMatch
-  );
-  const guess = game.guesses.find(
-    (g) => g.round === currentRound && g.match === currentMatch
-  );
-
-  // Validate selections
-  if (!coinSelection || !guess) {
-    console.error(
-      `Incomplete data for game ${game._id}:`,
-      { coinSelection, guess }
-    );
-    io.to(game._id.toString()).emit("error", { message: "Incomplete round data." });
-    return;
-  }
-
-  // Flag to determine if the match has ended
-  let matchEnded = false;
-  let matchWinner = null;
-
-  // Check if the estimator guessed correctly
-  if (coinSelection.coins === guess.guess) {
-    // Estimator wins the match immediately
-    matchWinner =
-      game.player1Role === "estimator" ? game.player1 : game.player2;
-    matchEnded = true;
-  } else {
-    // Estimator did not guess correctly, increment the round
-    game.currentRound += 1;
-
-    // Check if maximum rounds have been reached
-    if (game.currentRound > game.rounds) {
-      // Coin player wins the match
-      matchWinner =
-        game.player1Role === "coin-player" ? game.player1 : game.player2;
-      matchEnded = true;
-    }
-  }
-
-  if (matchEnded) {
-    // Record the match winner
-    game.matchWinners.push({
-      match: currentMatch,
-      winner: matchWinner,
-    });
-
-    // Update user stats after each match
-    if (matchWinner) {
-      if (!game.isAIGame) {
-        // logic for human players
-        await UserSchema.findByIdAndUpdate(matchWinner, {
-          $inc: { wins: 1 },
-        });
-        const loser =
-          matchWinner.toString() === game.player1.toString()
-            ? game.player2
-            : game.player1;
-        await UserSchema.findByIdAndUpdate(loser, {
-          $inc: { losses: 1 },
-        });
-      } else {
-        // Update AI stats for Standard mode
-        const difficulty = game.aiDifficulty;
-
-        // Identify AI and Human players
-        const aiPlayer = game.player2; // Since player2 is always AI
-        const humanPlayer = game.player1;
-
-        if (matchWinner.toString() === humanPlayer.toString()) {
-          // Human won against AI
-          const lossField = "aiLosses"; // Fixed since only one mode
-          await UserSchema.findByIdAndUpdate(humanPlayer, {
-            $inc: { [lossField]: 1 },
-          });
-        } else if (matchWinner.toString() === aiPlayer.toString()) {
-          // AI won against Human
-          const winField = "aiWins"; // Fixed since only one mode
-          await UserSchema.findByIdAndUpdate(humanPlayer, {
-            $inc: { [winField]: 1 },
-          });
-        } else {
-          console.error(
-            `Match winner ${matchWinner} is neither human (${humanPlayer}) nor AI (${aiPlayer}) in game ${game._id}.`
-          );
-        }
-      }
-    }
-
-    // Reset scores and swap roles for next match
-    game.player1Score = 0;
-    game.player2Score = 0;
-    const tempRole = game.player1Role;
-    game.player1Role = game.player2Role;
-    game.player2Role = tempRole;
-
-    // Move to the next match
-    game.currentMatch += 1;
-    game.currentRound = 1;
-
-    // Check if game is over
-    if (game.currentMatch > game.matches) {
-      // Determine overall game winner based on match wins
-      let player1Wins = game.matchWinners.filter(
-        (w) => w.winner && w.winner.toString() === game.player1.toString()
-      ).length;
-      let player2Wins = game.matchWinners.filter(
-        (w) => w.winner && w.winner.toString() === game.player2.toString()
-      ).length;
-
-      if (player1Wins > player2Wins) {
-        game.winner = game.player1;
-      } else if (player2Wins > player1Wins) {
-        game.winner = game.player2;
-      }
-
-      game.status = "completed";
-      await game.save();
-
-      // Notify clients that the game is completed
-      const populatedGame = await GameSchema.findById(game._id)
-        .populate("player1", "username")
-        .populate("player2", "username")
-        .populate("winner", "username");
-
-      io.to(game._id.toString()).emit("gameCompleted", populatedGame);
-    } else {
-      // Save the game and notify clients that the match is completed
-      await game.save();
-      const populatedGame = await GameSchema.findById(game._id)
-        .populate("player1", "username")
-        .populate("player2", "username");
-      io.to(game._id.toString()).emit("matchCompleted", populatedGame);
-    }
-  } else {
-    // If the match hasn't ended, save the game and proceed to the next round
-    await game.save();
-    const populatedGame = await GameSchema.findById(game._id)
-      .populate("player1", "username")
-      .populate("player2", "username");
-    io.to(game._id.toString()).emit("roundChanged", populatedGame);
-  }
-};
+// Function to process round outcome is now in GameController.js
 
 const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

@@ -1,3 +1,4 @@
+// aiUtils.js
 const fs = require("fs");
 const path = require("path");
 
@@ -14,6 +15,11 @@ const loadGameTree = () => {
     console.error('Error loading game tree:', err);
     throw err;
   }
+};
+
+const getGameTree = () => {
+  if (!gameTree) loadGameTree();
+  return gameTree;
 };
 
 /**
