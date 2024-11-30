@@ -192,4 +192,6 @@ module.exports = {
   createAIGame,
   getGame,
   submitRound,
+  handleAIMove,
+  processRoundOutcome,
 };

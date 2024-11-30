@@ -8,7 +8,11 @@ const userRouter = require("./routes/UserRoutes");
 const UserSchema = require("./models/UserSchema");
 const gameRouter = require("./routes/GameRoutes");
 const GameSchema = require("./models/GameSchema");
-const { handleAIMove } = require("./controller/GameController");
+const {
+  submitRound,
+  handleAIMove,
+  processRoundOutcome,
+} = require("./controller/GameController");
 const { getAISelection } = require("./utils/aiUtils");
 
 dotenv.config();
