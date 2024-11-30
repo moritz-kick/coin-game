@@ -22,7 +22,7 @@ export default function Scoreboard() {
   const [loading, setLoading] = useState(true);
   const itemsPerPage = 10;
 
-  const [scoreBoardType, setScoreBoardType] = useState("all");
+  const [scoreBoardType, setScoreBoardType] = useState("human");
 
   useEffect(() => {
     fetchScores();
@@ -31,7 +31,9 @@ export default function Scoreboard() {
   const fetchScores = async () => {
     setLoading(true);
     try {
-      const { data } = await API().get(`/user/scorecard?type=${scoreBoardType}`);
+      const { data } = await API().get(
+        `/user/scorecard?type=${scoreBoardType}`
+      );
       setScores(data?.users || []);
     } catch (error) {
       console.log(error, "error");
@@ -53,35 +55,63 @@ export default function Scoreboard() {
   const sortedScores = [...scores].sort((a, b) => {
     let comparison = 0;
 
+    const aWins =
+      scoreBoardType === "human"
+        ? a.wins
+        : scoreBoardType === "ai"
+        ? a.aiWins
+        : 0; // Default to 0 for any unforeseen type
+    const bWins =
+      scoreBoardType === "human"
+        ? b.wins
+        : scoreBoardType === "ai"
+        ? b.aiWins
+        : 0;
+
+    const aLosses =
+      scoreBoardType === "human"
+        ? a.losses
+        : scoreBoardType === "ai"
+        ? a.aiLosses
+        : 0;
+    const bLosses =
+      scoreBoardType === "human"
+        ? b.losses
+        : scoreBoardType === "ai"
+        ? b.aiLosses
+        : 0;
+
+    const aWinRate = aWins + aLosses > 0 ? (aWins / (aWins + aLosses)) * 100 : 0;
+    const bWinRate = bWins + bLosses > 0 ? (bWins / (bWins + bLosses)) * 100 : 0;
+
     if (sortColumn === "winRate") {
-      // Compare win rates
-      if (a.winRate !== b.winRate) {
-        comparison = sortDirection === "asc" ? a.winRate - b.winRate : b.winRate - a.winRate;
+      if (aWinRate !== bWinRate) {
+        comparison =
+          sortDirection === "asc" ? aWinRate - bWinRate : bWinRate - aWinRate;
       } else {
-        // If win rates are equal, compare total games played
-        const aTotalGames = a.wins + a.losses;
-        const bTotalGames = b.wins + b.losses;
-        comparison = bTotalGames - aTotalGames; // Player with more games comes first
+        const aTotalGames = aWins + aLosses;
+        const bTotalGames = bWins + bLosses;
+        comparison = bTotalGames - aTotalGames;
       }
     } else if (sortColumn === "wins") {
-      // Compare wins
-      if (a.wins !== b.wins) {
-        comparison = sortDirection === "asc" ? a.wins - b.wins : b.wins - a.wins;
+      if (aWins !== bWins) {
+        comparison = sortDirection === "asc" ? aWins - bWins : bWins - aWins;
       } else {
-        // If wins are equal, compare win rates
-        if (a.winRate !== b.winRate) {
-          comparison = sortDirection === "asc" ? a.winRate - b.winRate : b.winRate - a.winRate;
+        if (aWinRate !== bWinRate) {
+          comparison =
+            sortDirection === "asc" ? aWinRate - bWinRate : bWinRate - aWinRate;
         } else {
-          // If win rates are also equal, compare total games played
-          const aTotalGames = a.wins + a.losses;
-          const bTotalGames = b.wins + b.losses;
+          const aTotalGames = aWins + aLosses;
+          const bTotalGames = bWins + bLosses;
           comparison = bTotalGames - aTotalGames;
         }
       }
     } else {
       // Default comparison for other columns
-      if (a[sortColumn] < b[sortColumn]) comparison = sortDirection === "asc" ? -1 : 1;
-      else if (a[sortColumn] > b[sortColumn]) comparison = sortDirection === "asc" ? 1 : -1;
+      if (a[sortColumn] < b[sortColumn])
+        comparison = sortDirection === "asc" ? -1 : 1;
+      else if (a[sortColumn] > b[sortColumn])
+        comparison = sortDirection === "asc" ? 1 : -1;
       else comparison = 0;
     }
 
@@ -106,13 +136,16 @@ export default function Scoreboard() {
       </CardHeader>
       <CardContent>
         <div className="flex flex-wrap items-center gap-2 mb-4">
-          {["all", "coin-players", "estimators", "ai-easy", "ai-hard"].map((type) => (
+          {["human", "ai"].map((type) => (
             <Button
               key={type}
-              onClick={() => setScoreBoardType(type)}
+              onClick={() => {
+                setScoreBoardType(type);
+                setCurrentPage(1);
+              }}
               variant={scoreBoardType === type ? "default" : "outline"}
             >
-              {type.replace("-", " ")}
+              {type === "human" ? "Human" : "AI"}
             </Button>
           ))}
         </div>
@@ -129,7 +162,7 @@ export default function Scoreboard() {
             <Search className="h-4 w-4" />
           </Button>
         </div>
-        
+
         {loading ? (
           <p>Loading...</p>
         ) : (
@@ -187,16 +220,31 @@ export default function Scoreboard() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedScores.map((score) => (
-                <TableRow key={score.id}>
-                  <TableCell>{score.username}</TableCell>
-                  <TableCell>{score.wins}</TableCell>
-                  <TableCell>{score.losses}</TableCell>
-                  <TableCell>
-                    {score.winRate ? +score.winRate.toFixed(2) : 0}%
-                  </TableCell>
-                </TableRow>
-              ))}
+              {paginatedScores.map((score) => {
+                const wins =
+                  scoreBoardType === "human"
+                    ? score.wins
+                    : scoreBoardType === "ai"
+                    ? score.aiWins
+                    : 0; // Default to 0 for any unforeseen type
+                const losses =
+                  scoreBoardType === "human"
+                    ? score.losses
+                    : scoreBoardType === "ai"
+                    ? score.aiLosses
+                    : 0;
+                const winRate =
+                  wins + losses > 0 ? (wins / (wins + losses)) * 100 : 0;
+
+                return (
+                  <TableRow key={score.id}>
+                    <TableCell>{score.username}</TableCell>
+                    <TableCell>{wins}</TableCell>
+                    <TableCell>{losses}</TableCell>
+                    <TableCell>{winRate.toFixed(2)}%</TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         )}

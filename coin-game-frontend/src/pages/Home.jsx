@@ -22,11 +22,11 @@ import { useAppContext } from "@/context/AppContext";
 import { toast } from "sonner";
 import estimatorImage from "@/images/webanwendung_pcg_estimator.png";
 import gameInviteImage from "@/images/gameinvite.png";
+import { API, showErrorToast } from "@/lib/utils";
 
 export default function Home() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedDifficulty, setSelectedDifficulty] = useState("Easy");
-  const [selectedMatches, setSelectedMatches] = useState(1);
+  const [selectedMatches, setSelectedMatches] = useState([3]); // Default to 3 matches
   const [confirmUsername, setConfirmUsername] = useState("");
   const [newUsername, setNewUsername] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
@@ -34,13 +34,47 @@ export default function Home() {
   const navigate = useNavigate();
   const { user, deleteUserAccount, changeUsername } = useAppContext();
 
-  const handlePlayAI = () => {
-    // navigate(
-    //   `/game-vs-ai?difficulty=${selectedDifficulty}&matches=${selectedMatches}`
-    // );
-    toast("Coming soon! Stay tuned for the AI mode.");
+  /**
+   * Handles the "Play Against AI" button click.
+   * Opens the dialog to select the number of matches.
+   */
+  const handlePlayAI = async () => {
+    if (!user) {
+      toast.error("Please log in to play against the AI");
+      navigate("/login");
+      return;
+    }
+    setIsDialogOpen(true);
   };
 
+  /**
+   * Initiates the AI game with the selected number of matches.
+   */
+  const startAIGame = async () => {
+    try {
+      const { data } = await API.post("/game/create-ai-game", {
+        matches: selectedMatches[0],
+        // Since there's only one AI mode, we can set it to a fixed value, e.g., "Standard"
+        aiDifficulty: "Standard",
+      });
+
+      if (data && data.game && data.game._id) {
+        const gameId = data.game._id;
+        navigate(`/game-vs-ai/${gameId}`);
+      } else {
+        throw new Error("Invalid response from server");
+      }
+    } catch (error) {
+      console.error("Error starting AI game:", error);
+      toast.error("Failed to start AI game. Please try again.");
+    } finally {
+      setIsDialogOpen(false);
+    }
+  };
+
+  /**
+   * Handles the deletion of a user account.
+   */
   const handleDeleteAccount = () => {
     if (confirmUsername !== user.username) {
       toast.error("Usernames do not match");
@@ -50,15 +84,23 @@ export default function Home() {
     deleteUserAccount();
   };
 
+  /**
+   * Handles the change of a user's username.
+   */
   const handleChangeUsername = async () => {
     if (!newUsername) {
       toast.error("Username cannot be empty");
       return;
     }
 
-    changeUsername(newUsername);
-    setNewUsername("");
-    toast.success("Username updated successfully");
+    try {
+      await changeUsername(newUsername);
+      setNewUsername("");
+      toast.success("Username updated successfully");
+    } catch (error) {
+      console.error("Error changing username:", error);
+      toast.error("Failed to update username. Please try again.");
+    }
   };
 
   const images = [
@@ -68,6 +110,7 @@ export default function Home() {
 
   return (
     <div className="space-y-8">
+      {/* Welcome Card */}
       <Card>
         <CardHeader>
           <CardTitle>Welcome to Patrik's Coin Game</CardTitle>
@@ -75,67 +118,41 @@ export default function Home() {
         </CardHeader>
         <CardContent>
           <p>
-            Patrik's Coin Game is a two-player game where one player <strong>hides coins </strong> and the other <strong>tries to guess</strong> the number.
+            Patrik's Coin Game is a two-player game where one player{" "}
+            <strong>hides coins</strong> and the other <strong>tries to guess</strong> the number.
           </p>
           <div className="mt-4 space-x-4">
-            {/* AI Game Dialog Not Ready */}
-            {/* <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            {/* Play Against AI */}
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button>Play Against AI</Button>
+                <Button onClick={handlePlayAI}>Play Against AI</Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                  <DialogTitle>Select Difficulty and Matches</DialogTitle>
+                  <DialogTitle>Select Number of Matches</DialogTitle>
                 </DialogHeader>
-                <div className="space-y-4">
-                  <div className="flex space-x-4">
-                    <Button
-                      variant={
-                        selectedDifficulty === "Easy" ? "default" : "outline"
-                      }
-                      onClick={() => setSelectedDifficulty("Easy")}
-                    >
-                      Easy
-                    </Button>
-                    <Button
-                      variant={
-                        selectedDifficulty === "Hard" ? "default" : "outline"
-                      }
-                      onClick={() => setSelectedDifficulty("Hard")}
-                    >
-                      Hard
-                    </Button>
-                  </div>
+                <div className="space-y-6">
+                  {/* Matches Slider */}
                   <div>
-                    <label>Number of Matches: {selectedMatches}</label>
+                    <label className="block mb-2 font-medium">
+                      Number of Matches: {selectedMatches[0]}
+                    </label>
                     <Slider
                       min={1}
                       max={10}
                       step={1}
-                      value={[selectedMatches]}
-                      onValueChange={(value) => setSelectedMatches(value[0])}
+                      value={selectedMatches}
+                      onValueChange={(value) => setSelectedMatches(value)}
                     />
                   </div>
                 </div>
-                <DialogFooter>
-                  <Button onClick={handlePlayAI}>Start Game</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog> */}
-            {/* AI Game Dialog Meanwhile */}
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>Play Against AI</Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Feature Coming Soon</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <p>The AI mode is currently under development and will be available soon!</p>
-                </div>
-                <DialogFooter>
-                  <Button onClick={() => setIsDialogOpen(false)}>Close</Button>
+                <DialogFooter className="mt-6 space-x-2">
+                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={startAIGame} disabled={selectedMatches[0] < 1}>
+                    Start Game
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -149,6 +166,7 @@ export default function Home() {
           </div>
         </CardContent>
       </Card>
+
       {/* Rules Section */}
       <Card>
         <CardHeader>
@@ -162,7 +180,7 @@ export default function Home() {
             <Link to="/rules">View Game Rules</Link>
           </Button>
           <div className="p-4">
-          <CardDescription>Check out the detailed rules with a short video</CardDescription>
+            <CardDescription>Check out the detailed rules with a short video.</CardDescription>
           </div>
         </CardContent>
       </Card>

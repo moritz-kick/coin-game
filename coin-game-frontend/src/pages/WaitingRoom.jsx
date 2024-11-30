@@ -55,13 +55,15 @@ export default function WaitingRoom() {
       matches: selectedMatches[0],
     });
     setSelectedUser(null);
-    toast.success(`Challenge sent to ${users.find(u => u._id === challengedId)?.username}`);
+    toast.success(
+      `Challenge sent to ${users.find((u) => u._id === challengedId)?.username}`
+    );
   };
 
   useEffect(() => {
     if (!loggedInUser || !socket) return;
 
-    socket?.on("updateWaitingRoom", (user) => {
+    const handleUpdateWaitingRoom = (user) => {
       if (user._id === loggedInUser._id) return;
       toast.success(`${user?.username} joined the waiting room`);
       setUsers((prevUsers) => {
@@ -71,9 +73,13 @@ export default function WaitingRoom() {
         }
         return prevUsers;
       });
-    });
+    };
 
-    return () => socket?.off("updateWaitingRoom");
+    socket.on("updateWaitingRoom", handleUpdateWaitingRoom);
+
+    return () => {
+      socket.off("updateWaitingRoom", handleUpdateWaitingRoom);
+    };
   }, [socket, loggedInUser]);
 
   const handleAcceptChallenge = (challengerId, challengedId, matches) => {
@@ -85,7 +91,9 @@ export default function WaitingRoom() {
   };
 
   useEffect(() => {
-    socket?.on("challengeReceived", ({ challenger, challenged, matches }) => {
+    if (!socket) return;
+
+    const handleChallengeReceived = ({ challenger, challenged, matches }) => {
       toast(
         `${challenger?.username} has challenged you for a ${matches} ${
           matches > 1 ? "matches" : "match"
@@ -98,11 +106,19 @@ export default function WaitingRoom() {
           },
         }
       );
-    });
+    };
 
-    socket?.on("gameCreated", ({ gameId }) => {
+    const handleGameCreated = ({ gameId }) => {
       navigate(`/game/${gameId}`);
-    });
+    };
+
+    socket.on("challengeReceived", handleChallengeReceived);
+    socket.on("gameCreated", handleGameCreated);
+
+    return () => {
+      socket.off("challengeReceived", handleChallengeReceived);
+      socket.off("gameCreated", handleGameCreated);
+    };
   }, [socket, navigate]);
 
   return (

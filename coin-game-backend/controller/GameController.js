@@ -1,5 +1,6 @@
 const GameSchema = require("../models/GameSchema");
 const UserSchema = require("../models/UserSchema");
+const { getAISelection } = require("../utils/aiUtils");
 
 // Function to create a game against another player
 const createGame = async (req, res) => {
@@ -41,7 +42,7 @@ const createGame = async (req, res) => {
 const createAIGame = async (req, res) => {
   try {
     const player1Id = req.user.id;
-    const { difficulty, matches } = req.body;
+    const { matches } = req.body;
 
     // Randomly assign roles
     const roles = ["coin-player", "estimator"];
@@ -54,7 +55,7 @@ const createAIGame = async (req, res) => {
       player1Role: player1Role,
       player2Role: player1Role === "coin-player" ? "estimator" : "coin-player",
       isAIGame: true,
-      aiDifficulty: difficulty,
+      aiDifficulty: "Standard",
     });
 
     res.status(200).json({
@@ -173,16 +174,6 @@ const handleAIMove = async (game, socket) => {
   // Proceed to process round outcome
   await processRoundOutcome(game, socket);
 };
-
-// Placeholder function to get AI's selection
-const getAISelection = async (game, role) => {
-  // Implement AI logic based on game.aiDifficulty
-  // For now, return random valid choice
-  const validChoices = [0, 1, 2, 3, 4, 5];
-  const randomIndex = Math.floor(Math.random() * validChoices.length);
-  return validChoices[randomIndex];
-};
-
 
 module.exports = {
   createGame,

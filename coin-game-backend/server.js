@@ -8,6 +8,8 @@ const userRouter = require("./routes/UserRoutes");
 const UserSchema = require("./models/UserSchema");
 const gameRouter = require("./routes/GameRoutes");
 const GameSchema = require("./models/GameSchema");
+const { handleAIMove } = require("./controller/GameController");
+const { getAISelection } = require("./utils/aiUtils");
 
 dotenv.config();
 
@@ -18,6 +20,25 @@ const io = socketIo(server, {
     origin: "*",
   },
 });
+
+// Initialize AI User
+const initializeAIUser = async () => {
+  try {
+    let aiUser = await UserSchema.findOne({ deviceId: "AI" });
+    if (!aiUser) {
+      aiUser = await UserSchema.create({
+        username: "AI",
+        deviceId: "AI",
+        status: "offline",
+      });
+      console.log("AI user created.");
+    }
+  } catch (error) {
+    console.error("Error initializing AI user:", error);
+  }
+};
+
+initializeAIUser();
 
 // CORS configuration
 app.use(
@@ -123,7 +144,8 @@ io.on("connection", (socket) => {
           {
             status: "aborted",
             winner,
-          }
+          },
+          { new: true }
         )
           .populate("player1", "username")
           .populate("player2", "username")
@@ -148,14 +170,24 @@ io.on("connection", (socket) => {
   socket.on(
     "challengeUser",
     async ({ challengerId, challengedId, matches }) => {
-      const challenger = await UserSchema.findById(challengerId);
-      const challenged = await UserSchema.findById(challengedId);
+      try {
+        const challenger = await UserSchema.findById(challengerId);
+        const challenged = await UserSchema.findById(challengedId);
 
-      io.to(challenged.socketId).emit("challengeReceived", {
-        challenger,
-        challenged,
-        matches,
-      });
+        if (!challenger || !challenged) {
+          socket.emit("error", { message: "Challenger or challenged user not found." });
+          return;
+        }
+
+        io.to(challenged.socketId).emit("challengeReceived", {
+          challenger,
+          challenged,
+          matches,
+        });
+      } catch (error) {
+        console.error("Error handling challengeUser event:", error);
+        socket.emit("error", { message: "Failed to process challenge." });
+      }
     }
   );
 
@@ -163,10 +195,15 @@ io.on("connection", (socket) => {
   socket.on(
     "acceptChallenge",
     async ({ challengerId, challengedId, matches }) => {
-      const findedPlayer1 = await UserSchema.findById(challengerId);
-      const findedPlayer2 = await UserSchema.findById(challengedId);
-
       try {
+        const findedPlayer1 = await UserSchema.findById(challengerId);
+        const findedPlayer2 = await UserSchema.findById(challengedId);
+
+        if (!findedPlayer1 || !findedPlayer2) {
+          socket.emit("error", { message: "Challenger or challenged user not found." });
+          return;
+        }
+
         // Randomly assign roles
         const roles = ["coin-player", "estimator"];
         const randomIndex = Math.floor(Math.random() * 2);
@@ -178,7 +215,9 @@ io.on("connection", (socket) => {
           player2: findedPlayer2._id,
           player1Role: player1Role,
           player2Role: player2Role,
-          matches: parseInt(matches),
+          matches: parseInt(matches) || 3,
+          isAIGame: false,
+          aiDifficulty: "Standard", // Fixed since only one mode
         });
 
         const gameID = game._id.toString();
@@ -204,7 +243,8 @@ io.on("connection", (socket) => {
           game: populatedGame,
         });
       } catch (err) {
-        console.log(err);
+        console.error("Error handling acceptChallenge event:", err);
+        socket.emit("error", { message: "Failed to create game." });
       }
     }
   );
@@ -222,13 +262,13 @@ io.on("connection", (socket) => {
       if (actionBy === "coin-player") {
         game.coinSelections.push({
           round: game.currentRound,
-          coins: +selection ?? 0,
+          coins: +selection || 0,
           match: game.currentMatch,
         });
       } else if (actionBy === "estimator") {
         game.guesses.push({
           round: game.currentRound,
-          guess: +selection ?? 0,
+          guess: +selection || 0,
           match: game.currentMatch,
         });
       } else {
@@ -238,30 +278,34 @@ io.on("connection", (socket) => {
 
       await game.save();
 
-      // Populate player1, player2, and winner before emitting
-      const populatedGame = await GameSchema.findById(gameId)
-        .populate("player1", "username")
-        .populate("player2", "username")
-        .populate("winner", "username");
+      if (game.isAIGame) {
+        await handleAIMove(game, io);
+      } else {
+        // Populate player1, player2, and winner before emitting
+        const populatedGame = await GameSchema.findById(gameId)
+          .populate("player1", "username")
+          .populate("player2", "username")
+          .populate("winner", "username");
 
-      io.to(gameId).emit("roundSubmitted", populatedGame);
+        io.to(gameId).emit("roundSubmitted", populatedGame);
 
-      // Check if both players have submitted
-      const coinSelection = game.coinSelections.find(
-        (cs) =>
-          cs.round === game.currentRound && cs.match === game.currentMatch
-      );
-      const guess = game.guesses.find(
-        (g) =>
-          g.round === game.currentRound && g.match === game.currentMatch
-      );
+        // Check if both players have submitted
+        const coinSelection = game.coinSelections.find(
+          (cs) =>
+            cs.round === game.currentRound && cs.match === game.currentMatch
+        );
+        const guess = game.guesses.find(
+          (g) =>
+            g.round === game.currentRound && g.match === game.currentMatch
+        );
 
-      if (coinSelection && guess) {
-        // Process round outcome
-        await processRoundOutcome(game, io);
+        if (coinSelection && guess) {
+          // Process round outcome
+          await processRoundOutcome(game, io);
+        }
       }
     } catch (error) {
-      console.error(error);
+      console.error("Error in submitRound:", error);
       socket.emit("error", { message: error.message });
     }
   });
@@ -338,7 +382,7 @@ io.on("connection", (socket) => {
         });
       }
     } catch (error) {
-      console.error(error);
+      console.error("Error handling playerTimeout:", error);
       socket.emit("error", { message: error.message });
     }
   });
@@ -382,6 +426,16 @@ const processRoundOutcome = async (game, io) => {
     (g) => g.round === currentRound && g.match === currentMatch
   );
 
+  // Validate selections
+  if (!coinSelection || !guess) {
+    console.error(
+      `Incomplete data for game ${game._id}:`,
+      { coinSelection, guess }
+    );
+    io.to(game._id.toString()).emit("error", { message: "Incomplete round data." });
+    return;
+  }
+
   // Flag to determine if the match has ended
   let matchEnded = false;
   let matchWinner = null;
@@ -389,11 +443,8 @@ const processRoundOutcome = async (game, io) => {
   // Check if the estimator guessed correctly
   if (coinSelection.coins === guess.guess) {
     // Estimator wins the match immediately
-    if (game.player1Role === "estimator") {
-      matchWinner = game.player1;
-    } else {
-      matchWinner = game.player2;
-    }
+    matchWinner =
+      game.player1Role === "estimator" ? game.player1 : game.player2;
     matchEnded = true;
   } else {
     // Estimator did not guess correctly, increment the round
@@ -402,11 +453,8 @@ const processRoundOutcome = async (game, io) => {
     // Check if maximum rounds have been reached
     if (game.currentRound > game.rounds) {
       // Coin player wins the match
-      if (game.player1Role === "coin-player") {
-        matchWinner = game.player1;
-      } else {
-        matchWinner = game.player2;
-      }
+      matchWinner =
+        game.player1Role === "coin-player" ? game.player1 : game.player2;
       matchEnded = true;
     }
   }
@@ -420,19 +468,44 @@ const processRoundOutcome = async (game, io) => {
 
     // Update user stats after each match
     if (matchWinner) {
-      // Increment the winner's wins
-      await UserSchema.findByIdAndUpdate(matchWinner, {
-        $inc: { wins: 1 },
-      });
-      // Identify the loser
-      const loser =
-        matchWinner.toString() === game.player1.toString()
-          ? game.player2
-          : game.player1;
-      // Increment the loser's losses
-      await UserSchema.findByIdAndUpdate(loser, {
-        $inc: { losses: 1 },
-      });
+      if (!game.isAIGame) {
+        // logic for human players
+        await UserSchema.findByIdAndUpdate(matchWinner, {
+          $inc: { wins: 1 },
+        });
+        const loser =
+          matchWinner.toString() === game.player1.toString()
+            ? game.player2
+            : game.player1;
+        await UserSchema.findByIdAndUpdate(loser, {
+          $inc: { losses: 1 },
+        });
+      } else {
+        // Update AI stats for Standard mode
+        const difficulty = game.aiDifficulty;
+
+        // Identify AI and Human players
+        const aiPlayer = game.player2; // Since player2 is always AI
+        const humanPlayer = game.player1;
+
+        if (matchWinner.toString() === humanPlayer.toString()) {
+          // Human won against AI
+          const lossField = "aiLosses"; // Fixed since only one mode
+          await UserSchema.findByIdAndUpdate(humanPlayer, {
+            $inc: { [lossField]: 1 },
+          });
+        } else if (matchWinner.toString() === aiPlayer.toString()) {
+          // AI won against Human
+          const winField = "aiWins"; // Fixed since only one mode
+          await UserSchema.findByIdAndUpdate(humanPlayer, {
+            $inc: { [winField]: 1 },
+          });
+        } else {
+          console.error(
+            `Match winner ${matchWinner} is neither human (${humanPlayer}) nor AI (${aiPlayer}) in game ${game._id}.`
+          );
+        }
+      }
     }
 
     // Reset scores and swap roles for next match

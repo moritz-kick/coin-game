@@ -20,20 +20,11 @@ const UserSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    // NEW FIELDS FOR AI STATS
-    aiEasyWins: {
+    aiWins: {
       type: Number,
       default: 0,
     },
-    aiEasyLosses: {
-      type: Number,
-      default: 0,
-    },
-    aiHardWins: {
-      type: Number,
-      default: 0,
-    },
-    aiHardLosses: {
+    aiLosses: {
       type: Number,
       default: 0,
     },

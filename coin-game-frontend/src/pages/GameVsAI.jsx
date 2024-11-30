@@ -7,8 +7,10 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { API } from "@/lib/utils";
 import { useAppContext } from "@/context/AppContext";
+import { getSocket } from "@/lib/socket";
 import { toast } from "sonner";
 
 const strategies = [
@@ -63,70 +65,159 @@ const strategies = [
 ];
 
 export default function GameVsAI() {
-  const location = useLocation();
+  const { gameId } = useParams();
+
+  const [gameState, setGameState] = useState(null);
+
+  const socket = getSocket();
+
   const navigate = useNavigate();
-  const { user } = useAppContext();
 
-  // Parse query parameters
-  const queryParams = new URLSearchParams(location.search);
-  const difficulty = queryParams.get("difficulty") || "Easy";
-  const totalMatches = parseInt(queryParams.get("matches")) || 1;
-
-  const [currentMatch, setCurrentMatch] = useState(1);
-  const [currentRound, setCurrentRound] = useState(1);
-  const totalRounds = 3;
-
-  const [playerRole, setPlayerRole] = useState("coin-player"); // or 'estimator'
   const [selectedCoins, setSelectedCoins] = useState(null);
   const [guess, setGuess] = useState(null);
   const [submitted, setSubmitted] = useState(false);
-
   const [validChoices, setValidChoices] = useState([0, 1, 2, 3, 4, 5]);
 
-  const [previousCoinSelection, setPreviousCoinSelection] = useState(null);
-  const [previousGuess, setPreviousGuess] = useState(null);
-
-  const [playerScore, setPlayerScore] = useState(0);
-  const [aiScore, setAIScore] = useState(0);
-
-  const [timer, setTimer] = useState(30);
-
-  const [gameHistory, setGameHistory] = useState([]);
-
+  const { user } = useAppContext();
 
   useEffect(() => {
-    if (timer > 0 && !submitted) {
-      const timerId = setTimeout(() => setTimer(timer - 1), 1000);
-      return () => clearTimeout(timerId);
-    } else if (!submitted) {
-      // Time's up, handle accordingly
-      handleSubmit();
+    if (!gameId) return;
+
+    (async () => {
+      try {
+        const { data } = await API().get(`/game/${gameId}`);
+        setGameState({
+          ...data?.game,
+          timer: 30,
+        });
+      } catch (error) {
+        console.error(error);
+      }
+    })();
+  }, [gameId]);
+
+  // Player scores
+  const [player1Score, setPlayer1Score] = useState(0);
+  const [player2Score, setPlayer2Score] = useState(0);
+
+  useEffect(() => {
+    if (gameState && gameState.matchWinners) {
+      const player1Id = gameState.player1._id;
+      const player2Id = gameState.player2._id;
+      let p1Score = 0;
+      let p2Score = 0;
+      gameState.matchWinners.forEach((match) => {
+        if (match.winner.toString() === player1Id.toString()) {
+          p1Score += 1;
+        } else if (match.winner.toString() === player2Id.toString()) {
+          p2Score += 1;
+        }
+      });
+      setPlayer1Score(p1Score);
+      setPlayer2Score(p2Score);
     }
-  }, [timer, submitted]);
+  }, [gameState]);
+
+  // Timer useEffect
+  useEffect(() => {
+    if (!gameState) return;
+    if (gameState?.timer > 0 && gameState?.status === "in-progress") {
+      const timerId = setTimeout(() => {
+        setGameState((prevState) => ({
+          ...prevState,
+          timer: prevState.timer - 1,
+        }));
+      }, 1000);
+      return () => clearTimeout(timerId);
+    } else if (gameState.timer === 0) {
+      // Handle time's up scenario
+      handleTimeUp();
+    }
+  }, [gameState?.timer, gameState?.status]);
 
   useEffect(() => {
-    // Reset timer when round or match changes
-    setTimer(30);
-  }, [currentRound, currentMatch]);
+    if (!gameState) return;
 
-  useEffect(() => {
-    if (currentRound > totalRounds) {
-      // End of match
-      determineMatchWinner();
-      if (currentMatch >= totalMatches) {
-        // End of game
-        determineGameWinner();
+    const currentRound = gameState.currentRound;
+    const currentMatch = gameState.currentMatch;
+
+    // Check if 0 has already been played
+    const zeroPlayed = gameState.coinSelections.some(
+      (cs) => cs.coins === 0 && cs.match === currentMatch
+    );
+
+    if (currentRound === 1) {
+      // First round: any number from 0 to 5
+      setValidChoices([0, 1, 2, 3, 4, 5]);
+    } else if (currentRound === 2) {
+      // Second round
+      const selectionRound1 = gameState.coinSelections.find(
+        (cs) => cs.round === 1 && cs.match === currentMatch
+      )?.coins;
+
+      // Valid choices:
+      // - Numbers greater than selection in Round 1
+      // - 0 (if not already played)
+      // - 5 (always allowed)
+      const validChoices = [];
+
+      for (let num = selectionRound1 + 1; num <= 5; num++) {
+        validChoices.push(num);
+      }
+
+      if (!zeroPlayed) {
+        validChoices.push(0); // 0 can be played once
+      }
+
+      if (!validChoices.includes(5)) {
+        validChoices.push(5); // Ensure 5 is included
+      }
+
+      setValidChoices(Array.from(new Set(validChoices)));
+    } else if (currentRound === 3) {
+      // Third round
+      const selectionRound1 = gameState.coinSelections.find(
+        (cs) => cs.round === 1 && cs.match === currentMatch
+      )?.coins;
+      const selectionRound2 = gameState.coinSelections.find(
+        (cs) => cs.round === 2 && cs.match === currentMatch
+      )?.coins;
+
+      if (selectionRound2 === 0) {
+        // If 0 was selected in Round 2
+        // Valid choices are numbers higher than selection in Round 1 or 5 again
+        const validChoices = [];
+
+        for (let num = selectionRound1 + 1; num <= 5; num++) {
+          validChoices.push(num);
+        }
+
+        validChoices.push(5); // 5 can always be played
+
+        setValidChoices(Array.from(new Set(validChoices)));
       } else {
-        // Start new match
-        setCurrentMatch(currentMatch + 1);
-        setCurrentRound(1);
-        // Swap roles
-        setPlayerRole(
-          playerRole === "coin-player" ? "estimator" : "coin-player"
-        );
+        // Valid choices:
+        // - Numbers greater than selection in Round 2
+        // - 0 (if not already played)
+        // - 5 (always allowed)
+        const validChoices = [];
+
+        for (let num = selectionRound2 + 1; num <= 5; num++) {
+          validChoices.push(num);
+        }
+
+        if (!zeroPlayed) {
+          validChoices.push(0); // 0 can be played once
+        }
+
+        if (!validChoices.includes(5)) {
+          validChoices.push(5); // Ensure 5 is included
+        }
+        // Reset valid choices for the first round
+        setValidChoices(Array.from(new Set(validChoices)));
       }
     }
-  }, [currentRound]);
+  }, [gameState]);
 
   const handleCoinSelection = (coins) => {
     if (validChoices.includes(coins)) {
@@ -145,87 +236,183 @@ export default function GameVsAI() {
   };
 
   const handleSubmit = () => {
-    if (submitted) return;
+    const guessedPlayerKey =
+      gameState?.player1._id === user?._id ? "player1Role" : "player2Role";
 
-    let aiSelection = null;
-
-    if (playerRole === "coin-player") {
-      // AI is estimator
-      aiSelection = difficulty === "Easy" ? aiEasy() : aiHard();
-      setPreviousGuess(aiSelection);
-      // Compare selectedCoins and aiSelection to determine outcome
-      // For simplicity, proceed to next round
-    } else {
-      // AI is coin-player
-      aiSelection = difficulty === "Easy" ? aiEasy() : aiHard();
-      setPreviousCoinSelection(aiSelection);
-      // Compare guess and aiSelection to determine outcome
-    }
-
-    // Update game history
-    setGameHistory([
-      ...gameHistory,
-      {
-        match: currentMatch,
-        round: currentRound,
-        playerRole,
-        selectedCoins:
-          playerRole === "coin-player" ? selectedCoins : aiSelection,
-        guess: playerRole === "estimator" ? guess : aiSelection,
-      },
-    ]);
-
-    // Update valid choices for next round
-    updateValidChoices();
-
+    // Update game state, switch active player, etc.
+    socket.emit("submitRound", {
+      gameId,
+      selection:
+        gameState?.[guessedPlayerKey] === "coin-player"
+          ? selectedCoins
+          : guess,
+      actionBy:
+        gameState?.[guessedPlayerKey] === "coin-player"
+          ? "coin-player"
+          : "estimator",
+    });
     setSubmitted(true);
-    setTimeout(() => {
-      setSubmitted(false);
+  };
+
+  const handleTimeUp = () => {
+    socket.emit("playerTimeout", { gameId, userId: user._id });
+  };
+
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on("roundChanged", (game) => {
+      setGameState({
+        ...game,
+        timer: 30,
+      });
       setSelectedCoins(null);
       setGuess(null);
-      setCurrentRound(currentRound + 1);
-    }, 1000);
-  };
+      setSubmitted(false);
+    });
 
-  const updateValidChoices = () => {
-    if (currentRound >= totalRounds) {
+    socket.on("roundSubmitted", (game) => {
+      setGameState({
+        ...game,
+        timer: gameState.timer,
+      });
+    });
+
+    socket.on("matchCompleted", (game) => {
+      setGameState({
+        ...game,
+        timer: 30,
+      });
       setValidChoices([0, 1, 2, 3, 4, 5]);
-    } else {
-      const lastSelection =
-        playerRole === "coin-player" ? selectedCoins : previousCoinSelection;
+      setSelectedCoins(null);
+      setGuess(null);
+      setSubmitted(false);
 
-      const nextStrategies = strategies.filter((s) => s[0] === lastSelection);
-      const nextValidChoices = [...new Set(nextStrategies.map((s) => s[1]))];
-      setValidChoices(nextValidChoices);
-    }
-  };
+      // Display the result message
+      const myUserId = user._id;
+      const lastMatchWinner =
+        game.matchWinners[game.matchWinners.length - 1];
 
-  const determineMatchWinner = () => {
-    // Placeholder logic to determine match winner
-    // For now, randomly assign winner
-    const winner = Math.random() > 0.5 ? "player" : "ai";
-    if (winner === "player") {
-      setPlayerScore(playerScore + 1);
-      toast("You Won the Match!");
-    } else {
-      setAIScore(aiScore + 1);
-      toast("You Lost the Match!");
-    }
-  };
+      if (!lastMatchWinner) return;
 
-  const determineGameWinner = () => {
-    // Determine overall game winner
-    if (playerScore > aiScore) {
-      toast("You Won the Game!");
-    } else if (playerScore < aiScore) {
-      toast("You Lost the Game!");
-    }
-    // Redirect to scoreboard or home
-    navigate("/scoreboard");
-  };
+      if (lastMatchWinner.winner === myUserId) {
+        toast("You Won");
+      } else {
+        toast("You Lose");
+      }
+    });
+
+    socket.on("gameCompleted", (game) => {
+      const myUserId = user._id;
+
+      // Count matches won and lost by the user
+      let matchesWon = 0;
+      let matchesLost = 0;
+
+      game.matchWinners.forEach((match) => {
+        if (
+          match.winner &&
+          match.winner.toString() === myUserId.toString()
+        ) {
+          matchesWon++;
+        } else {
+          matchesLost++;
+        }
+      });
+
+      // Display the result message
+      toast.success(
+        `Game Completed! You won ${matchesWon} ${
+          matchesWon === 1 ? "match" : "matches"
+        } and lost ${matchesLost} ${
+          matchesLost === 1 ? "match" : "matches"
+        }.`,
+        {
+          duration: 10000,
+        }
+      );
+
+      // Navigate to the scoreboard or another page
+      navigate("/scoreboard");
+    });
+
+    socket.on("gameAborted", (game) => {
+      toast.error("Game Aborted");
+      navigate("/waiting-room");
+    });
+
+    // Handle timeouts
+    socket.on("gameAbortedDueToTimeout", (data) => {
+      toast.error(data.message);
+      navigate("/waiting-room");
+    });
+
+    socket.on("gameCompletedDueToTimeout", ({ game, loserId }) => {
+      const isUserLoser = loserId === user._id;
+      toast.success(
+        `Game Completed! You ${
+          isUserLoser ? "lost" : "won"
+        } on time.`,
+        { duration: 10000 }
+      );
+      navigate("/scoreboard");
+    });
+
+    return () => {
+      socket.off("roundChanged");
+      socket.off("matchCompleted");
+      socket.off("gameCompleted");
+      socket.off("roundSubmitted");
+      socket.off("gameAborted");
+      socket.off("gameAbortedDueToTimeout");
+      socket.off("gameCompletedDueToTimeout");
+    };
+  }, [socket, gameState, user._id, navigate]);
+
+  useEffect(() => {
+    let userConfirmed = false;
+
+    const handleBeforeUnload = (event) => {
+      event.preventDefault();
+      event.returnValue = "";
+      return "";
+    };
+
+    const handleUnload = () => {
+      if (userConfirmed) {
+        socket.emit("userLeft", {
+          userId: user._id,
+          gameId,
+        });
+        window.location.href = "/waiting-room";
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        userConfirmed = true;
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("unload", handleUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("unload", handleUnload);
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange
+      );
+    };
+  }, [socket, user, gameId]);
 
   const renderGameControls = () => {
-    if (playerRole === "coin-player") {
+    const guessedPlayerKey =
+      gameState?.player1._id === user?._id ? "player1Role" : "player2Role";
+
+    if (gameState?.[guessedPlayerKey] === "coin-player") {
       return (
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Coin Player</h3>
@@ -284,39 +471,69 @@ export default function GameVsAI() {
     }
   };
 
+  // Extract previous round data
+  const previousRound = gameState ? gameState.currentRound - 1 : null;
+
+  const previousCoinSelection =
+    previousRound > 0
+      ? gameState.coinSelections.find(
+          (cs) =>
+            cs.round === previousRound && cs.match === gameState.currentMatch
+        )
+      : null;
+
+  const previousGuess =
+    previousRound > 0
+      ? gameState.guesses.find(
+          (g) =>
+            g.round === previousRound && g.match === gameState.currentMatch
+        )
+      : null;
+
   return (
     <Card>
       <CardHeader>
         {/* Display Game: Player vs AI (Score) */}
         <CardTitle>
-          Game: {user?.username} vs AI ({playerScore} - {aiScore})
+          Game: {user?.username} vs AI ({player1Score} - {player2Score})
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex justify-between">
-          <span>{playerRole === "coin-player" ? "Coin Player" : "Estimator"}</span>
-          <span>
-            Round: {currentRound}/{totalRounds}
-          </span>
-          <span>
-            Match: {currentMatch}/{totalMatches}
-          </span>
-        </div>
-        {/* Display previous round choices */}
-        {currentRound > 1 && (
-          <div className="space-y-2">
-            <h3 className="text-lg font-semibold">Last Picks</h3>
-            <p>
-              Coin Player selected: {previousCoinSelection ?? "N/A"}
-            </p>
-            <p>Estimator guessed: {previousGuess ?? "N/A"}</p>
+      {gameState && (
+        <CardContent className="space-y-4">
+          <div className="flex justify-between">
+            {/* Display role instead of Active Player */}
+            <span>
+              {gameState?.player1._id === user._id
+                ? gameState.player1Role === "coin-player"
+                  ? "Coin Player"
+                  : "Estimator"
+                : gameState.player2Role === "coin-player"
+                ? "Coin Player"
+                : "Estimator"}
+            </span>
+            <span>
+              Round: {gameState?.currentRound}/{gameState.rounds}
+            </span>
+            <span>
+              Match: {gameState?.currentMatch}/{gameState.matches}
+            </span>
           </div>
-        )}
-        <Progress value={(timer / 10) * 100} />
-        <div>Time Remaining: {timer} seconds</div>
+          {/* Display previous round choices */}
+          {previousRound > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold">Last Picks</h3>
+              <p>
+                Coin Player selected: {previousCoinSelection?.coins ?? "N/A"}
+              </p>
+              <p>Estimator guessed: {previousGuess?.guess ?? "N/A"}</p>
+            </div>
+          )}
+          <Progress value={(gameState?.timer / 30) * 100} />
+          <div>Time Remaining: {gameState?.timer} seconds</div>
 
-        {renderGameControls()}
-      </CardContent>
+          {renderGameControls()}
+        </CardContent>
+      )}
     </Card>
   );
 }
