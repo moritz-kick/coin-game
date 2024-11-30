@@ -22,7 +22,7 @@ export default function Scoreboard() {
   const [loading, setLoading] = useState(true);
   const itemsPerPage = 10;
 
-  const [scoreBoardType, setScoreBoardType] = useState("human");
+  const [scoreBoardType, setScoreBoardType] = useState("all");
 
   useEffect(() => {
     fetchScores();
