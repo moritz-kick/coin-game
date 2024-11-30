@@ -4,18 +4,6 @@ const path = require("path");
 let gameTree = null;
 
 const loadGameTree = () => {
-<<<<<<< HEAD
-  const data = fs.readFileSync(
-    path.join(__dirname, "../data/game_tree.json"),
-    "utf-8"
-  );
-  gameTree = JSON.parse(data);
-};
-
-const getGameTree = () => {
-  if (!gameTree) loadGameTree();
-  return gameTree;
-=======
   const filePath = path.join(__dirname, "../data/game_tree.json");
   console.log('Loading game tree from:', filePath);
   try {
@@ -26,7 +14,6 @@ const getGameTree = () => {
     console.error('Error loading game tree:', err);
     throw err;
   }
->>>>>>> d8a95b8 (New AI Changes, I hope it works now)
 };
 
 /**

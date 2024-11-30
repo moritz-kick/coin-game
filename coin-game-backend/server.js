@@ -32,11 +32,8 @@ const initializeAIUser = async () => {
         status: "offline",
       });
       console.log("AI user created.");
-<<<<<<< HEAD
-=======
     } else {
       console.log("AI user already exists.");
->>>>>>> d8a95b8 (New AI Changes, I hope it works now)
     }
   } catch (error) {
     console.error("Error initializing AI user:", error);
@@ -222,11 +219,7 @@ io.on("connection", (socket) => {
           player2Role: player2Role,
           matches: parseInt(matches) || 3,
           isAIGame: false,
-<<<<<<< HEAD
-          aiDifficulty: "Standard", // Fixed since only one mode
-=======
           aiDifficulty: "Standard",
->>>>>>> d8a95b8 (New AI Changes, I hope it works now)
         });
 
         const gameID = game._id.toString();

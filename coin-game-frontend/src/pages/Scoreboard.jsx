@@ -85,32 +85,18 @@ export default function Scoreboard() {
     const bWinRate = bWins + bLosses > 0 ? (bWins / (bWins + bLosses)) * 100 : 0;
 
     if (sortColumn === "winRate") {
-<<<<<<< HEAD
-      if (aWinRate !== bWinRate) {
-        comparison =
-          sortDirection === "asc" ? aWinRate - bWinRate : bWinRate - aWinRate;
-=======
       // Compare win rates
       if (a.winRate !== b.winRate) {
         comparison =
           sortDirection === "asc"
             ? a.winRate - b.winRate
             : b.winRate - a.winRate;
->>>>>>> d8a95b8 (New AI Changes, I hope it works now)
       } else {
         const aTotalGames = aWins + aLosses;
         const bTotalGames = bWins + bLosses;
         comparison = bTotalGames - aTotalGames;
       }
     } else if (sortColumn === "wins") {
-<<<<<<< HEAD
-      if (aWins !== bWins) {
-        comparison = sortDirection === "asc" ? aWins - bWins : bWins - aWins;
-      } else {
-        if (aWinRate !== bWinRate) {
-          comparison =
-            sortDirection === "asc" ? aWinRate - bWinRate : bWinRate - aWinRate;
-=======
       // Compare wins
       if (a.wins !== b.wins) {
         comparison =
@@ -122,7 +108,6 @@ export default function Scoreboard() {
             sortDirection === "asc"
               ? a.winRate - b.winRate
               : b.winRate - a.winRate;
->>>>>>> d8a95b8 (New AI Changes, I hope it works now)
         } else {
           const aTotalGames = aWins + aLosses;
           const bTotalGames = bWins + bLosses;
@@ -186,11 +171,7 @@ export default function Scoreboard() {
       <CardContent>
         {/* Updated Filtering Buttons */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
-<<<<<<< HEAD
-          {["human", "ai"].map((type) => (
-=======
           {["all", "coin-players", "estimators", "AI"].map((type) => (
->>>>>>> d8a95b8 (New AI Changes, I hope it works now)
             <Button
               key={type}
               onClick={() => {
@@ -199,11 +180,7 @@ export default function Scoreboard() {
               }}
               variant={scoreBoardType === type ? "default" : "outline"}
             >
-<<<<<<< HEAD
-              {type === "human" ? "Human" : "AI"}
-=======
               {type}
->>>>>>> d8a95b8 (New AI Changes, I hope it works now)
             </Button>
           ))}
         </div>
@@ -222,10 +199,7 @@ export default function Scoreboard() {
           </Button>
         </div>
 
-<<<<<<< HEAD
-=======
         {/* Loading Indicator */}
->>>>>>> d8a95b8 (New AI Changes, I hope it works now)
         {loading ? (
           <p>Loading...</p>
         ) : (
@@ -318,33 +292,6 @@ export default function Scoreboard() {
               </TableRow>
             </TableHeader>
             <TableBody>
-<<<<<<< HEAD
-              {paginatedScores.map((score) => {
-                const wins =
-                  scoreBoardType === "human"
-                    ? score.wins
-                    : scoreBoardType === "ai"
-                    ? score.aiWins
-                    : 0; // Default to 0 for any unforeseen type
-                const losses =
-                  scoreBoardType === "human"
-                    ? score.losses
-                    : scoreBoardType === "ai"
-                    ? score.aiLosses
-                    : 0;
-                const winRate =
-                  wins + losses > 0 ? (wins / (wins + losses)) * 100 : 0;
-
-                return (
-                  <TableRow key={score.id}>
-                    <TableCell>{score.username}</TableCell>
-                    <TableCell>{wins}</TableCell>
-                    <TableCell>{losses}</TableCell>
-                    <TableCell>{winRate.toFixed(2)}%</TableCell>
-                  </TableRow>
-                );
-              })}
-=======
               {paginatedScores.map((score) => (
                 <TableRow key={score._id}>
                   <TableCell>{score.username}</TableCell>
@@ -362,7 +309,6 @@ export default function Scoreboard() {
                   </TableCell>
                 </TableRow>
               ))}
->>>>>>> d8a95b8 (New AI Changes, I hope it works now)
             </TableBody>
           </Table>
         )}
