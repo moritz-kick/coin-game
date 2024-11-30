@@ -53,7 +53,7 @@ export default function App() {
                 }
               />
               <Route
-                path="/game-vs-ai"
+                path="/game-vs-ai/:gameId"
                 element={
                   <ProtectedRoute>
                     <GameVsAI />
