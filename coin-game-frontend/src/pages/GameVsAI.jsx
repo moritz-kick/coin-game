@@ -1,3 +1,4 @@
+// GameVsAI.jsx
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,8 +31,11 @@ export default function GameVsAI() {
 
   const { user } = useAppContext();
 
+  /**
+   * Fetch game data and join the game room
+   */
   useEffect(() => {
-    if (!gameId) return;
+    if (!gameId || !socket) return;
 
     (async () => {
       try {
@@ -40,11 +44,16 @@ export default function GameVsAI() {
           ...data?.game,
           timer: 30,
         });
+
+        // **Join the game room**
+        socket.emit("joinGameRoom", { gameId });
+        console.log(`Emitted 'joinGameRoom' event for game ${gameId}`);
       } catch (error) {
-        console.error(error);
+        console.error("Error fetching game data:", error);
+        toast.error("Failed to load game data.");
       }
     })();
-  }, [gameId]);
+  }, [gameId, socket]);
 
   // Player scores
   const [player1Score, setPlayer1Score] = useState(0);
@@ -85,6 +94,9 @@ export default function GameVsAI() {
     }
   }, [gameState?.timer, gameState?.status]);
 
+  /**
+   * Update valid choices based on the current round and match
+   */
   useEffect(() => {
     if (!gameState) return;
 
@@ -169,27 +181,38 @@ export default function GameVsAI() {
     }
   }, [gameState]);
 
+  /**
+   * Handle coin selection by the user
+   */
   const handleCoinSelection = (coins) => {
     if (validChoices.includes(coins)) {
       setSelectedCoins(coins);
+      console.log(`User selected coins: ${coins}`);
     } else {
       toast.error("Invalid selection");
     }
   };
 
+  /**
+   * Handle guess by the user
+   */
   const handleGuess = (guessedCoins) => {
     if (validChoices.includes(guessedCoins)) {
       setGuess(guessedCoins);
+      console.log(`User made a guess: ${guessedCoins}`);
     } else {
       toast.error("Invalid guess");
     }
   };
 
+  /**
+   * Handle submission of the round
+   */
   const handleSubmit = () => {
     const guessedPlayerKey =
       gameState?.player1._id === user?._id ? "player1Role" : "player2Role";
 
-    // Update game state, switch active player, etc.
+    // Emit submitRound event
     socket.emit("submitRound", {
       gameId,
       selection:
@@ -202,16 +225,28 @@ export default function GameVsAI() {
           : "estimator",
     });
     setSubmitted(true);
+    console.log(`User submitted: ${gameState?.[guessedPlayerKey] === "coin-player" ? selectedCoins : guess}`);
   };
 
+  /**
+   * Handle time's up scenario
+   */
   const handleTimeUp = () => {
     socket.emit("playerTimeout", { gameId, userId: user._id });
+    console.log(`User timed out in game ${gameId}`);
   };
 
+  /**
+   * Listen to socket events
+   */
   useEffect(() => {
     if (!socket) return;
 
+    /**
+     * Handle roundChanged event
+     */
     socket.on("roundChanged", (game) => {
+      console.log("Received 'roundChanged' event:", game);
       setGameState({
         ...game,
         timer: 30,
@@ -221,14 +256,22 @@ export default function GameVsAI() {
       setSubmitted(false);
     });
 
+    /**
+     * Handle roundSubmitted event
+     */
     socket.on("roundSubmitted", (game) => {
+      console.log("Received 'roundSubmitted' event:", game);
       setGameState({
         ...game,
         timer: gameState.timer,
       });
     });
 
+    /**
+     * Handle matchCompleted event
+     */
     socket.on("matchCompleted", (game) => {
+      console.log("Received 'matchCompleted' event:", game);
       setGameState({
         ...game,
         timer: 30,
@@ -252,7 +295,11 @@ export default function GameVsAI() {
       }
     });
 
+    /**
+     * Handle gameCompleted event
+     */
     socket.on("gameCompleted", (game) => {
+      console.log("Received 'gameCompleted' event:", game);
       const myUserId = user._id;
 
       // Count matches won and lost by the user
@@ -286,18 +333,29 @@ export default function GameVsAI() {
       navigate("/scoreboard");
     });
 
+    /**
+     * Handle gameAborted event
+     */
     socket.on("gameAborted", (game) => {
+      console.log("Received 'gameAborted' event:", game);
       toast.error("Game Aborted");
       navigate("/waiting-room");
     });
 
-    // Handle timeouts
+    /**
+     * Handle gameAbortedDueToTimeout event
+     */
     socket.on("gameAbortedDueToTimeout", (data) => {
+      console.log("Received 'gameAbortedDueToTimeout' event:", data);
       toast.error(data.message);
       navigate("/waiting-room");
     });
 
+    /**
+     * Handle gameCompletedDueToTimeout event
+     */
     socket.on("gameCompletedDueToTimeout", ({ game, loserId }) => {
+      console.log("Received 'gameCompletedDueToTimeout' event:", { game, loserId });
       const isUserLoser = loserId === user._id;
       toast.success(
         `Game Completed! You ${
@@ -308,17 +366,29 @@ export default function GameVsAI() {
       navigate("/scoreboard");
     });
 
+    /**
+     * Handle error events
+     */
+    socket.on("error", (error) => {
+      console.error("Socket error:", error.message);
+      toast.error(error.message);
+    });
+
     return () => {
       socket.off("roundChanged");
+      socket.off("roundSubmitted");
       socket.off("matchCompleted");
       socket.off("gameCompleted");
-      socket.off("roundSubmitted");
       socket.off("gameAborted");
       socket.off("gameAbortedDueToTimeout");
       socket.off("gameCompletedDueToTimeout");
+      socket.off("error");
     };
   }, [socket, gameState, user._id, navigate]);
 
+  /**
+   * Handle user leaving the page
+   */
   useEffect(() => {
     let userConfirmed = false;
 
@@ -358,6 +428,9 @@ export default function GameVsAI() {
     };
   }, [socket, user, gameId]);
 
+  /**
+   * Render game controls based on the player's role
+   */
   const renderGameControls = () => {
     const guessedPlayerKey =
       gameState?.player1._id === user?._id ? "player1Role" : "player2Role";

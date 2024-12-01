@@ -64,13 +64,14 @@ app.use((req, res, next) => {
 // Parse JSON bodies
 app.use(express.json());
 
+// Connect to MongoDB
 mongoose
   .connect(process.env.MONGODB_URI)
   .then(() => {
     console.log("Connected to MongoDB");
   })
   .catch((err) => {
-    console.log(err);
+    console.error("MongoDB connection error:", err);
   });
 
 app.use("/user", userRouter);
@@ -81,7 +82,9 @@ io.on("connection", (socket) => {
 
   const socketId = socket.id;
 
-  // Handle user joining the waiting room
+  /**
+   * Handle user joining the waiting room
+   */
   socket.on("joinWaitingRoom", async (userId) => {
     try {
       console.log(
@@ -105,12 +108,15 @@ io.on("connection", (socket) => {
       }
 
       io.to("waitingRoom").emit("updateWaitingRoom", updateUserStatus);
+      console.log(`Emitted 'updateWaitingRoom' for user ${userId}`);
     } catch (error) {
       console.error(`Error joining waiting room for user ${userId}:`, error);
     }
   });
 
-  // Handle user leaving the game
+  /**
+   * Handle user leaving the game
+   */
   socket.on("userLeft", async ({ userId, gameId }) => {
     try {
       console.log(`User ${userId} is leaving the game ${gameId}`);
@@ -172,7 +178,9 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Handle challenge requests
+  /**
+   * Handle challenge requests
+   */
   socket.on(
     "challengeUser",
     async ({ challengerId, challengedId, matches }) => {
@@ -181,6 +189,7 @@ io.on("connection", (socket) => {
         const challenged = await UserSchema.findById(challengedId);
 
         if (!challenger || !challenged) {
+          console.error(`Challenger (${challengerId}) or challenged (${challengedId}) user not found.`);
           socket.emit("error", { message: "Challenger or challenged user not found." });
           return;
         }
@@ -190,6 +199,7 @@ io.on("connection", (socket) => {
           challenged,
           matches,
         });
+        console.log(`Emitted 'challengeReceived' to user ${challengedId} from challenger ${challengerId}`);
       } catch (error) {
         console.error("Error handling challengeUser event:", error);
         socket.emit("error", { message: "Failed to process challenge." });
@@ -197,7 +207,9 @@ io.on("connection", (socket) => {
     }
   );
 
-  // Handle acceptance of challenge
+  /**
+   * Handle acceptance of challenge
+   */
   socket.on(
     "acceptChallenge",
     async ({ challengerId, challengedId, matches }) => {
@@ -206,6 +218,7 @@ io.on("connection", (socket) => {
         const findedPlayer2 = await UserSchema.findById(challengedId);
 
         if (!findedPlayer1 || !findedPlayer2) {
+          console.error(`Challenger (${challengerId}) or challenged (${challengedId}) user not found.`);
           socket.emit("error", { message: "Challenger or challenged user not found." });
           return;
         }
@@ -228,17 +241,22 @@ io.on("connection", (socket) => {
 
         const gameID = game._id.toString();
 
+        console.log(`Game ${gameID} created between ${challengerId} and ${challengedId} with roles: Player1 (${player1Role}), Player2 (${player2Role})`);
+
+        // **Join the game room for both players**
         socket.join(gameID);
         io.to(findedPlayer1.socketId).socketsJoin(gameID);
         io.to(findedPlayer2.socketId).socketsJoin(gameID);
+        console.log(`Users ${challengerId} and ${challengedId} joined game room ${gameID}`);
 
+        // Update user statuses
         await UserSchema.findByIdAndUpdate(challengerId, {
           status: "in-game",
         });
-
         await UserSchema.findByIdAndUpdate(challengedId, {
           status: "in-game",
         });
+        console.log(`Users ${challengerId} and ${challengedId} status updated to 'in-game'`);
 
         const populatedGame = await GameSchema.findById(gameID)
           .populate("player1", "username")
@@ -248,6 +266,7 @@ io.on("connection", (socket) => {
           gameId: gameID,
           game: populatedGame,
         });
+        console.log(`Emitted 'gameCreated' for game ${gameID}`);
       } catch (err) {
         console.error("Error handling acceptChallenge event:", err);
         socket.emit("error", { message: "Failed to create game." });
@@ -255,14 +274,31 @@ io.on("connection", (socket) => {
     }
   );
 
-  // Handle round submissions using submitRound from GameController.js
-  socket.on("submitRound", (data) => submitRound(socket, data, io));
+  /**
+   * Handle joining game room (for AI games)
+   */
+  socket.on("joinGameRoom", ({ gameId }) => {
+    socket.join(gameId);
+    console.log(`Socket ${socket.id} joined game room ${gameId}`);
+  });
 
-  // Handle player timeout
+  /**
+   * Handle round submissions using submitRound from GameController.js
+   */
+  socket.on("submitRound", (data) => {
+    console.log(`Received 'submitRound' event with data:`, data);
+    submitRound(socket, data, io);
+  });
+
+  /**
+   * Handle player timeout
+   */
   socket.on("playerTimeout", async ({ gameId, userId }) => {
     try {
+      console.log(`Player timeout: User ${userId} for game ${gameId}`);
       const game = await GameSchema.findById(gameId);
       if (!game) {
+        console.error(`Game ${gameId} not found.`);
         socket.emit("error", { message: "Game not found" });
         return;
       }
@@ -275,6 +311,7 @@ io.on("connection", (socket) => {
         game.timeouts[game.currentRound] = {};
       }
       game.timeouts[game.currentRound][userId] = true;
+      console.log(`Recorded timeout for user ${userId} in game ${gameId}, round ${game.currentRound}`);
 
       // Check if both players have timed out in this round
       const player1Id = game.player1.toString();
@@ -289,15 +326,18 @@ io.on("connection", (socket) => {
         // Both players timed out
         game.status = "aborted";
         await game.save();
+        console.log(`Game ${gameId} aborted due to both players timing out.`);
 
         // Notify clients
         io.to(gameId).emit("gameAbortedDueToTimeout", {
           message: "Both players didn't play in time",
         });
+        console.log(`Emitted 'gameAbortedDueToTimeout' for game ${gameId}`);
 
         // Update user statuses
         await UserSchema.findByIdAndUpdate(game.player1, { status: "online" });
         await UserSchema.findByIdAndUpdate(game.player2, { status: "online" });
+        console.log(`Users ${player1Id} and ${player2Id} status updated to 'online'`);
       } else if (player1TimedOut || player2TimedOut) {
         // One player timed out
         const winner = player1TimedOut ? game.player2 : game.player1;
@@ -307,6 +347,7 @@ io.on("connection", (socket) => {
         game.status = "completed";
         game.winner = winner;
         await game.save();
+        console.log(`Game ${gameId} completed due to timeout. Winner: ${winner}`);
 
         // Update user stats
         await UserSchema.findByIdAndUpdate(winner, {
@@ -317,6 +358,7 @@ io.on("connection", (socket) => {
           $inc: { losses: 1 },
           status: "online",
         });
+        console.log(`Updated stats: Winner (${winner}) wins incremented, Loser (${loser}) losses incremented.`);
 
         // Notify clients
         const populatedGame = await GameSchema.findById(gameId)
@@ -328,6 +370,7 @@ io.on("connection", (socket) => {
           game: populatedGame,
           loserId: loser.toString(),
         });
+        console.log(`Emitted 'gameCompletedDueToTimeout' for game ${gameId}`);
       }
     } catch (error) {
       console.error("Error handling playerTimeout:", error);
@@ -335,7 +378,9 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Handle user disconnect
+  /**
+   * Handle user disconnect
+   */
   socket.on("disconnect", async () => {
     try {
       console.log(`User with socket ID ${socketId} disconnected`);
@@ -360,8 +405,6 @@ io.on("connection", (socket) => {
     }
   });
 });
-
-// Function to process round outcome is now in GameController.js
 
 const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

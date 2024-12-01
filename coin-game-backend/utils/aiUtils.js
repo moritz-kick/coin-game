@@ -4,6 +4,9 @@ const path = require("path");
 
 let gameTree = null;
 
+/**
+ * Load the game tree from the JSON file
+ */
 const loadGameTree = () => {
   const filePath = path.join(__dirname, "../data/game_tree.json");
   console.log('Loading game tree from:', filePath);
@@ -17,6 +20,9 @@ const loadGameTree = () => {
   }
 };
 
+/**
+ * Get the loaded game tree
+ */
 const getGameTree = () => {
   if (!gameTree) loadGameTree();
   return gameTree;
@@ -48,41 +54,57 @@ const getAISelection = async (game, role) => {
   const aiPlayerNumber = role === "coin-player" ? 0 : 1;
 
   // Find the matching state in the game tree
-  const currentState = gameTree.find((state) => {
-    return (
+  let currentState = null;
+  let stateIndex = -1;
+
+  for (let i = 0; i < gameTree.length; i++) {
+    const state = gameTree[i];
+    if (
       state.player === aiPlayerNumber &&
       state.round === currentRound &&
       arrayEquals(state.coin_player_choices, coin_player_choices) &&
       arrayEquals(state.estimator_guesses, estimator_guesses)
-    );
-  });
+    ) {
+      currentState = state;
+      stateIndex = i;
+      break;
+    }
+  }
 
-  if (!currentState) {
+  if (currentState) {
+    console.log(`Found matching state at index ${stateIndex} in game_tree.json:`);
+    console.log(JSON.stringify(currentState, null, 2));
+
+    const possibleActions = currentState.actions;
+
+    // Randomly select action based on probabilities
+    const totalProbability = Object.values(possibleActions).reduce(
+      (a, b) => a + b,
+      0
+    );
+    const random = Math.random() * totalProbability;
+    let cumulativeProbability = 0;
+    for (const [action, probability] of Object.entries(possibleActions)) {
+      cumulativeProbability += probability;
+      if (random <= cumulativeProbability) {
+        // Extract the number from action string, e.g., "Player 0 chose: 3"
+        const selectedNumber = parseInt(action.split(": ")[1]);
+        console.log(`AI (role: ${role}) selected action: "${action}", which translates to number: ${selectedNumber}`);
+        return selectedNumber;
+      }
+    }
+    // Fallback
+    console.log(`AI (role: ${role}) failed to select a valid action from probabilities. Defaulting to 0.`);
+    return 0;
+  } else {
     // If no matching state is found, return a random valid choice
     const validChoices = getValidChoices(game, role);
     const randomIndex = Math.floor(Math.random() * validChoices.length);
-    return validChoices[randomIndex];
+    const selectedChoice = validChoices[randomIndex];
+    console.log(`No matching state found in game_tree.json for the current game state.`);
+    console.log(`AI (role: ${role}) selecting a random valid choice: ${selectedChoice}`);
+    return selectedChoice;
   }
-
-  const possibleActions = currentState.actions;
-
-  // Randomly select action based on probabilities
-  const totalProbability = Object.values(possibleActions).reduce(
-    (a, b) => a + b,
-    0
-  );
-  const random = Math.random() * totalProbability;
-  let cumulativeProbability = 0;
-  for (const [action, probability] of Object.entries(possibleActions)) {
-    cumulativeProbability += probability;
-    if (random <= cumulativeProbability) {
-      // Extract the number from action string, e.g., "Player 0 chose: 3"
-      const selectedNumber = parseInt(action.split(": ")[1]);
-      return selectedNumber;
-    }
-  }
-  // Fallback
-  return 0;
 };
 
 /**

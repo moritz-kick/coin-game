@@ -3,7 +3,9 @@ const GameSchema = require("../models/GameSchema");
 const UserSchema = require("../models/UserSchema");
 const { getAISelection } = require("../utils/aiUtils");
 
-// Function to create a game against another player
+/**
+ * Function to create a game against another player
+ */
 const createGame = async (req, res) => {
   try {
     const player1Id = req.user.id;
@@ -29,17 +31,22 @@ const createGame = async (req, res) => {
       player2Role: player2Role,
     });
 
+    console.log(`Game created between ${player1Id} and ${player2Id}:`, game);
+
     res.status(200).json({
       game,
     });
   } catch (error) {
+    console.error("Error in createGame:", error);
     res.status(500).json({
       error: error.message,
     });
   }
 };
 
-// Create a game against AI
+/**
+ * Create a game against AI
+ */
 const createAIGame = async (req, res) => {
   try {
     const player1Id = req.user.id;
@@ -72,7 +79,7 @@ const createAIGame = async (req, res) => {
       aiDifficulty: "Standard",
     });
 
-    console.log('Game created:', game);
+    console.log('AI Game created:', game);
 
     res.status(200).json({ game });
   } catch (error) {
@@ -81,7 +88,9 @@ const createAIGame = async (req, res) => {
   }
 };
 
-// Get a specific game
+/**
+ * Get a specific game
+ */
 const getGame = async (req, res) => {
   try {
     const game = await GameSchema.findById(req.params.id)
@@ -92,14 +101,19 @@ const getGame = async (req, res) => {
       game,
     });
   } catch (error) {
+    console.error("Error in getGame:", error);
     res.status(500).json({
       error: error.message,
     });
   }
 };
 
-// Function to process the outcome of a round
+/**
+ * Function to process the outcome of a round
+ */
 const processRoundOutcome = async (game, io) => {
+  console.log(`Processing round outcome for game ${game._id}, Round ${game.currentRound}, Match ${game.currentMatch}`);
+
   const currentRound = game.currentRound;
   const currentMatch = game.currentMatch;
 
@@ -121,6 +135,8 @@ const processRoundOutcome = async (game, io) => {
     return;
   }
 
+  console.log(`Coin selection: ${coinSelection.coins}, Guess: ${guess.guess}`);
+
   // Determine the winner of the round
   let matchEnded = false;
   let matchWinner = null;
@@ -129,15 +145,18 @@ const processRoundOutcome = async (game, io) => {
   if (coinSelection.coins === guess.guess) {
     // Estimator wins the match immediately
     matchWinner = game.player1Role === "estimator" ? game.player1 : game.player2;
+    console.log(`Estimator guessed correctly. Winner: ${matchWinner}`);
     matchEnded = true;
   } else {
     // Estimator did not guess correctly, increment the round
     game.currentRound += 1;
+    console.log(`Estimator did not guess correctly. Incrementing round to ${game.currentRound}`);
 
     // Check if maximum rounds have been reached
     if (game.currentRound > game.rounds) {
       // Coin player wins the match
       matchWinner = game.player1Role === "coin-player" ? game.player1 : game.player2;
+      console.log(`Maximum rounds reached. Coin Player wins. Winner: ${matchWinner}`);
       matchEnded = true;
     }
   }
@@ -148,6 +167,7 @@ const processRoundOutcome = async (game, io) => {
       match: currentMatch,
       winner: matchWinner,
     });
+    console.log(`Match winner recorded: ${matchWinner}`);
 
     // Update user stats after each match
     if (matchWinner) {
@@ -163,12 +183,10 @@ const processRoundOutcome = async (game, io) => {
         await UserSchema.findByIdAndUpdate(loser, {
           $inc: { losses: 1 },
         });
+        console.log(`Updated stats: Winner (${matchWinner}) wins incremented, Loser (${loser}) losses incremented.`);
       } else {
         // Update AI stats for Standard mode
-        const difficulty = game.aiDifficulty;
-
-        // Identify AI and Human players
-        const aiPlayer = game.player2; // Since player2 is always AI
+        const aiPlayer = game.player2; // AI is always player2
         const humanPlayer = game.player1;
 
         if (matchWinner.toString() === humanPlayer.toString()) {
@@ -177,12 +195,14 @@ const processRoundOutcome = async (game, io) => {
           await UserSchema.findByIdAndUpdate(humanPlayer, {
             $inc: { [lossField]: 1 },
           });
+          console.log(`Human won against AI. Updated aiLosses.`);
         } else if (matchWinner.toString() === aiPlayer.toString()) {
           // AI won against Human
           const winField = "aiWins"; // Fixed since only one mode
           await UserSchema.findByIdAndUpdate(humanPlayer, {
             $inc: { [winField]: 1 },
           });
+          console.log(`AI won against Human. Updated aiWins.`);
         } else {
           console.error(
             `Match winner ${matchWinner} is neither human (${humanPlayer}) nor AI (${aiPlayer}) in game ${game._id}.`
@@ -197,10 +217,12 @@ const processRoundOutcome = async (game, io) => {
     const tempRole = game.player1Role;
     game.player1Role = game.player2Role;
     game.player2Role = tempRole;
+    console.log(`Swapped roles: player1Role=${game.player1Role}, player2Role=${game.player2Role}`);
 
     // Move to the next match
     game.currentMatch += 1;
     game.currentRound = 1;
+    console.log(`Moved to next match: ${game.currentMatch}`);
 
     // Check if game is over
     if (game.currentMatch > game.matches) {
@@ -214,12 +236,15 @@ const processRoundOutcome = async (game, io) => {
 
       if (player1Wins > player2Wins) {
         game.winner = game.player1;
+        console.log(`Overall game winner: ${game.player1}`);
       } else if (player2Wins > player1Wins) {
         game.winner = game.player2;
+        console.log(`Overall game winner: ${game.player2}`);
       }
 
       game.status = "completed";
       await game.save();
+      console.log(`Game ${game._id} completed.`);
 
       // Notify clients that the game is completed
       const populatedGame = await GameSchema.findById(game._id)
@@ -228,34 +253,44 @@ const processRoundOutcome = async (game, io) => {
         .populate("winner", "username");
 
       io.to(game._id.toString()).emit("gameCompleted", populatedGame);
+      console.log(`Emitted 'gameCompleted' for game ${game._id}`);
     } else {
       // Save the game and notify clients that the match is completed
       await game.save();
+      console.log(`Saved game ${game._id} after match completion.`);
       const populatedGame = await GameSchema.findById(game._id)
         .populate("player1", "username")
         .populate("player2", "username");
       io.to(game._id.toString()).emit("matchCompleted", populatedGame);
+      console.log(`Emitted 'matchCompleted' for game ${game._id}`);
     }
   } else {
     // If the match hasn't ended, save the game and proceed to the next round
     await game.save();
+    console.log(`Saved game ${game._id} for next round.`);
     const populatedGame = await GameSchema.findById(game._id)
       .populate("player1", "username")
       .populate("player2", "username");
     io.to(game._id.toString()).emit("roundChanged", populatedGame);
+    console.log(`Emitted 'roundChanged' for game ${game._id}`);
   }
 };
 
-// Handle AI's move
+/**
+ * Handle AI's move
+ */
 const handleAIMove = async (game, io) => {
   const currentRound = game.currentRound;
   const currentMatch = game.currentMatch;
-  const aiRole = game.player2Role; // Since player2 is AI
+  const aiRole = game.player2Role; // AI is always player2
   let aiSelection;
+
+  console.log(`Handling AI move for game ${game._id}, Round ${currentRound}, Match ${currentMatch}, AI Role: ${aiRole}`);
 
   if (aiRole === "coin-player") {
     // AI selects coins
     aiSelection = await getAISelection(game, "coin-player");
+    console.log(`AI (role: coin-player) selected coins: ${aiSelection}`);
     game.coinSelections.push({
       round: currentRound,
       coins: aiSelection,
@@ -264,6 +299,7 @@ const handleAIMove = async (game, io) => {
   } else if (aiRole === "estimator") {
     // AI makes a guess
     aiSelection = await getAISelection(game, "estimator");
+    console.log(`AI (role: estimator) made a guess: ${aiSelection}`);
     game.guesses.push({
       round: currentRound,
       guess: aiSelection,
@@ -273,19 +309,25 @@ const handleAIMove = async (game, io) => {
 
   // Save the game
   await game.save();
+  console.log(`AI's move saved for game ${game._id}`);
 
   // Proceed to process round outcome
   await processRoundOutcome(game, io);
 };
 
-// Submit round (handles both multiplayer and AI games)
+/**
+ * Submit round (handles both multiplayer and AI games)
+ */
 const submitRound = async (socket, data, io) => {
   const { gameId, selection, actionBy } = data;
+
+  console.log(`Received 'submitRound' event for game ${gameId} from actionBy: ${actionBy} with selection: ${selection}`);
 
   try {
     const game = await GameSchema.findById(gameId);
 
     if (!game) {
+      console.error(`Game ${gameId} not found.`);
       socket.emit("error", { message: "Game not found" });
       return;
     }
@@ -299,21 +341,26 @@ const submitRound = async (socket, data, io) => {
         coins: selection,
         match: currentMatch,
       });
+      console.log(`Player submitted coins: ${selection} for game ${gameId}, Round ${currentRound}, Match ${currentMatch}`);
     } else if (actionBy === "estimator") {
       game.guesses.push({
         round: currentRound,
         guess: selection,
         match: currentMatch,
       });
+      console.log(`Player submitted guess: ${selection} for game ${gameId}, Round ${currentRound}, Match ${currentMatch}`);
     } else {
+      console.error(`Invalid actionBy value: ${actionBy}`);
       socket.emit("error", { message: "Invalid actionBy value" });
       return;
     }
 
     // Save the game
     await game.save();
+    console.log(`Game ${game._id} saved after player submission.`);
 
     if (game.isAIGame) {
+      console.log(`Game ${game._id} is an AI game. Handling AI move.`);
       await handleAIMove(game, io);
     } else {
       // Populate player1, player2, and winner before emitting
@@ -323,6 +370,7 @@ const submitRound = async (socket, data, io) => {
         .populate("winner", "username");
 
       io.to(gameId).emit("roundSubmitted", populatedGame);
+      console.log(`Emitted 'roundSubmitted' for game ${game._id}`);
 
       // Check if both players have submitted
       const coinSelection = game.coinSelections.find(
@@ -335,6 +383,7 @@ const submitRound = async (socket, data, io) => {
       );
 
       if (coinSelection && guess) {
+        console.log(`Both players have submitted for game ${game._id}. Processing round outcome.`);
         // Process round outcome
         await processRoundOutcome(game, io);
       }
