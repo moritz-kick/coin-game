@@ -5,7 +5,8 @@ const path = require("path");
 let gameTree = null;
 
 /**
- * Load the game tree from the JSON file
+ * Load the game tree from the JSON file.
+ * This function reads and parses the game_tree.json file.
  */
 const loadGameTree = () => {
   const filePath = path.join(__dirname, "../data/game_tree.json");
@@ -21,11 +22,23 @@ const loadGameTree = () => {
 };
 
 /**
- * Get the loaded game tree
+ * Get the loaded game tree.
+ * If the game tree isn't loaded yet, load it first.
  */
 const getGameTree = () => {
   if (!gameTree) loadGameTree();
   return gameTree;
+};
+
+/**
+ * Helper function to check if two arrays are equal.
+ * @param {Array} arr1 - First array.
+ * @param {Array} arr2 - Second array.
+ * @returns {Boolean} - True if arrays are equal, false otherwise.
+ */
+const arrayEquals = (arr1, arr2) => {
+  if (arr1.length !== arr2.length) return false;
+  return arr1.every((val, index) => val === arr2[index]);
 };
 
 /**
@@ -37,20 +50,41 @@ const getGameTree = () => {
 const getAISelection = async (game, role) => {
   const gameTree = getGameTree();
 
-  // Build the current state signature
-  const coin_player_choices = game.coinSelections
+  // Filter and sort coin selections and guesses for the current match
+  const coinSelectionsCurrentMatch = game.coinSelections
     .filter((cs) => cs.match === game.currentMatch)
-    .sort((a, b) => a.round - b.round)
-    .map((cs) => cs.coins);
+    .sort((a, b) => a.round - b.round);
 
-  const estimator_guesses = game.guesses
+  const guessesCurrentMatch = game.guesses
     .filter((g) => g.match === game.currentMatch)
-    .sort((a, b) => a.round - b.round)
-    .map((g) => g.guess);
+    .sort((a, b) => a.round - b.round);
+
+  // Determine the number of rounds played in the current match
+  const roundsPlayed = Math.max(coinSelectionsCurrentMatch.length, guessesCurrentMatch.length);
+
+  // Construct aligned arrays for coin_player_choices and estimator_guesses
+  const coin_player_choices = [];
+  const estimator_guesses = [];
+
+  for (let i = 0; i < roundsPlayed; i++) {
+    // Use 'null' if data for a round is missing to maintain alignment
+    coin_player_choices.push(coinSelectionsCurrentMatch[i]?.coins ?? null);
+    estimator_guesses.push(guessesCurrentMatch[i]?.guess ?? null);
+  }
+
+  // Remove any trailing 'null' values to match the depth in the game tree
+  while (
+    coin_player_choices.length > 0 &&
+    coin_player_choices[coin_player_choices.length - 1] === null
+  ) {
+    coin_player_choices.pop();
+    estimator_guesses.pop();
+  }
 
   const currentRound = game.currentRound;
 
   // Determine the player number based on the role
+  // 0 for "coin-player", 1 for "estimator"
   const aiPlayerNumber = role === "coin-player" ? 0 : 1;
 
   // Find the matching state in the game tree
@@ -77,27 +111,29 @@ const getAISelection = async (game, role) => {
 
     const possibleActions = currentState.actions;
 
-    // Randomly select action based on probabilities
+    // Calculate total probability to normalize selection
     const totalProbability = Object.values(possibleActions).reduce(
       (a, b) => a + b,
       0
     );
     const random = Math.random() * totalProbability;
     let cumulativeProbability = 0;
+
     for (const [action, probability] of Object.entries(possibleActions)) {
       cumulativeProbability += probability;
       if (random <= cumulativeProbability) {
         // Extract the number from action string, e.g., "Player 0 chose: 3"
-        const selectedNumber = parseInt(action.split(": ")[1]);
+        const selectedNumber = parseInt(action.split(": ")[1], 10);
         console.log(`AI (role: ${role}) selected action: "${action}", which translates to number: ${selectedNumber}`);
         return selectedNumber;
       }
     }
-    // Fallback
+
+    // Fallback if no action was selected (shouldn't happen if probabilities are correct)
     console.log(`AI (role: ${role}) failed to select a valid action from probabilities. Defaulting to 0.`);
     return 0;
   } else {
-    // If no matching state is found, return a random valid choice
+    // If no matching state is found, select a random valid choice based on game rules
     const validChoices = getValidChoices(game, role);
     const randomIndex = Math.floor(Math.random() * validChoices.length);
     const selectedChoice = validChoices[randomIndex];
@@ -108,18 +144,8 @@ const getAISelection = async (game, role) => {
 };
 
 /**
- * Helper function to check if two arrays are equal.
- * @param {Array} arr1
- * @param {Array} arr2
- * @returns {Boolean}
- */
-const arrayEquals = (arr1, arr2) => {
-  if (arr1.length !== arr2.length) return false;
-  return arr1.every((val, index) => val === arr2[index]);
-};
-
-/**
  * Function to get valid choices for the AI based on the game rules.
+ * Ensures the AI selects only valid moves according to the current round and previous moves.
  * @param {Object} game - The game object containing the current game state.
  * @param {String} role - The role of the AI in the game ("coin-player" or "estimator").
  * @returns {Array} - An array of valid choices.
@@ -128,7 +154,7 @@ const getValidChoices = (game, role) => {
   const currentRound = game.currentRound;
   const currentMatch = game.currentMatch;
 
-  // Check if 0 has already been played
+  // Check if 0 has already been played in the current match
   const zeroPlayed = game.coinSelections.some(
     (cs) => cs.coins === 0 && cs.match === currentMatch
   );
