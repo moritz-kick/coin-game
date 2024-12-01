@@ -136,23 +136,11 @@ const getAISelection = async (game, role) => {
     console.log(`AI (role: ${role}) failed to select a valid action from probabilities. Defaulting to 0.`);
     return 0;
   } else {
-    // **Debugging: Log the current state used for searching**
-    console.error(`AI (role: ${role}) failed to find a matching state in game_tree.json.`);
-    console.error(`Search Parameters:`);
-    console.error(`Player Number: ${aiPlayerNumber} (${role})`);
-    console.error(`Current Round: ${currentRound}`);
-    console.error(`Coin Player Choices: ${JSON.stringify(coin_player_choices)}`);
-    console.error(`Estimator Guesses: ${JSON.stringify(estimator_guesses)}`);
-
-    // **Ensure that only data from the current match is used (arrays should have at most 2 elements)**
-    if (coin_player_choices.length > 2 || estimator_guesses.length > 2) {
-      console.warn(`Warning: coin_player_choices or estimator_guesses have more than 2 elements.`);
-    }
-
     // If no matching state is found, select a random valid choice based on game rules
     const validChoices = getValidChoices(game, role);
     const randomIndex = Math.floor(Math.random() * validChoices.length);
     const selectedChoice = validChoices[randomIndex];
+    console.log(`No matching state found in game_tree.json for the current game state.`);
     console.log(`AI (role: ${role}) selecting a random valid choice: ${selectedChoice}`);
     return selectedChoice;
   }
