@@ -51,14 +51,26 @@ const arrayEquals = (arr1, arr2) => {
 const getAISelection = async (game, role) => {
   const gameTree = getGameTree();
 
+  // **Determine AI Player Number**
+  // 0 for "coin-player", 1 for "estimator"
+  const aiPlayerNumber = role === "coin-player" ? 0 : 1;
+
   // **Create a Virtual Game State Treating Current Match as Match 1**
+  // This ensures the AI always searches for match 1 in the game_tree.json
   const virtualGame = {
     ...game,
     currentMatch: 1, // Treat any current match as match 1 for AI's search
-    // **Use virtualGame.currentMatch for filtering**
-    coinSelections: game.coinSelections.filter(cs => cs.match === 1),
-    guesses: game.guesses.filter(g => g.match === 1),
   };
+
+  // **If it's the first round of a new match, reset coinSelections and guesses**
+  if (game.currentRound === 1) {
+    virtualGame.coinSelections = [];
+    virtualGame.guesses = [];
+  } else {
+    // **Filter selections and guesses to include only the current match's data**
+    virtualGame.coinSelections = game.coinSelections.filter(cs => cs.match === game.currentMatch);
+    virtualGame.guesses = game.guesses.filter(g => g.match === game.currentMatch);
+  }
 
   // **Build the Current State Signature**
   const coinSelectionsCurrentMatch = virtualGame.coinSelections
@@ -91,10 +103,6 @@ const getAISelection = async (game, role) => {
   }
 
   const currentRound = game.currentRound;
-
-  // Determine the player number based on the role
-  // 0 for "coin-player", 1 for "estimator"
-  const aiPlayerNumber = role === "coin-player" ? 0 : 1;
 
   // **Find the Matching State in the Game Tree**
   let currentState = null;
