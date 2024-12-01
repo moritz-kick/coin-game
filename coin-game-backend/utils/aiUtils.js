@@ -43,6 +43,7 @@ const arrayEquals = (arr1, arr2) => {
 
 /**
  * Function to get AI's selection based on the current game state and role.
+ * This function treats all matches as match 1 internally to align with the game_tree.json.
  * @param {Object} game - The game object containing the current game state.
  * @param {String} role - The role of the AI in the game ("coin-player" or "estimator").
  * @returns {Number} - The selected move by the AI.
@@ -50,38 +51,44 @@ const arrayEquals = (arr1, arr2) => {
 const getAISelection = async (game, role) => {
   const gameTree = getGameTree();
 
-  // **Hardcode the match number to 1 for AI search**
-  const searchMatchNumber = 1;
+  // **Create a Virtual Game State Treating Current Match as Match 1**
+  // This ensures the AI always searches for match 1 in the game_tree.json
+  const virtualGame = {
+    ...game,
+    currentMatch: 1, // Treat any current match as match 1 for AI's search
+    // Filter selections and guesses to include only the current match's data
+    coinSelections: game.coinSelections.filter(cs => cs.match === game.currentMatch),
+    guesses: game.guesses.filter(g => g.match === game.currentMatch),
+  };
 
-  // Filter and sort coin selections and guesses for the searchMatchNumber
-  const coinSelectionsCurrentMatch = game.coinSelections
-    .filter((cs) => cs.match === searchMatchNumber)
-    .sort((a, b) => a.round - b.round);
+  // **Build the Current State Signature**
+  const coinSelectionsCurrentMatch = virtualGame.coinSelections
+    .sort((a, b) => a.round - b.round)
+    .map(cs => cs.coins);
 
-  const guessesCurrentMatch = game.guesses
-    .filter((g) => g.match === searchMatchNumber)
-    .sort((a, b) => a.round - b.round);
+  const estimator_guesses = virtualGame.guesses
+    .sort((a, b) => a.round - b.round)
+    .map(g => g.guess);
 
-  // Determine the number of rounds played in the current match
-  const roundsPlayed = Math.max(coinSelectionsCurrentMatch.length, guessesCurrentMatch.length);
+  // **Ensure Both Arrays Have the Same Length**
+  const roundsPlayed = Math.max(coinSelectionsCurrentMatch.length, estimator_guesses.length);
 
-  // Construct aligned arrays for coin_player_choices and estimator_guesses
-  const coin_player_choices = [];
-  const estimator_guesses = [];
+  const alignedCoinChoices = [];
+  const alignedGuesses = [];
 
   for (let i = 0; i < roundsPlayed; i++) {
     // Use 'null' if data for a round is missing to maintain alignment
-    coin_player_choices.push(coinSelectionsCurrentMatch[i]?.coins ?? null);
-    estimator_guesses.push(guessesCurrentMatch[i]?.guess ?? null);
+    alignedCoinChoices.push(coinSelectionsCurrentMatch[i] ?? null);
+    alignedGuesses.push(estimator_guesses[i] ?? null);
   }
 
-  // Remove any trailing 'null' values to match the depth in the game tree
+  // **Remove Any Trailing 'null' Values**
   while (
-    coin_player_choices.length > 0 &&
-    coin_player_choices[coin_player_choices.length - 1] === null
+    alignedCoinChoices.length > 0 &&
+    alignedCoinChoices[alignedCoinChoices.length - 1] === null
   ) {
-    coin_player_choices.pop();
-    estimator_guesses.pop();
+    alignedCoinChoices.pop();
+    alignedGuesses.pop();
   }
 
   const currentRound = game.currentRound;
@@ -90,7 +97,7 @@ const getAISelection = async (game, role) => {
   // 0 for "coin-player", 1 for "estimator"
   const aiPlayerNumber = role === "coin-player" ? 0 : 1;
 
-  // Find the matching state in the game tree
+  // **Find the Matching State in the Game Tree**
   let currentState = null;
   let stateIndex = -1;
 
@@ -99,8 +106,8 @@ const getAISelection = async (game, role) => {
     if (
       state.player === aiPlayerNumber &&
       state.round === currentRound &&
-      arrayEquals(state.coin_player_choices, coin_player_choices) &&
-      arrayEquals(state.estimator_guesses, estimator_guesses)
+      arrayEquals(state.coin_player_choices, alignedCoinChoices) &&
+      arrayEquals(state.estimator_guesses, alignedGuesses)
     ) {
       currentState = state;
       stateIndex = i;
