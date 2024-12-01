@@ -50,13 +50,16 @@ const arrayEquals = (arr1, arr2) => {
 const getAISelection = async (game, role) => {
   const gameTree = getGameTree();
 
-  // Filter and sort coin selections and guesses for the current match
+  // **Hardcode the match number to 1 for AI search**
+  const searchMatchNumber = 1;
+
+  // Filter and sort coin selections and guesses for the searchMatchNumber
   const coinSelectionsCurrentMatch = game.coinSelections
-    .filter((cs) => cs.match === game.currentMatch)
+    .filter((cs) => cs.match === searchMatchNumber)
     .sort((a, b) => a.round - b.round);
 
   const guessesCurrentMatch = game.guesses
-    .filter((g) => g.match === game.currentMatch)
+    .filter((g) => g.match === searchMatchNumber)
     .sort((a, b) => a.round - b.round);
 
   // Determine the number of rounds played in the current match
