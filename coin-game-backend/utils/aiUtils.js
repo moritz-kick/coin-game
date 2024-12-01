@@ -52,13 +52,12 @@ const getAISelection = async (game, role) => {
   const gameTree = getGameTree();
 
   // **Create a Virtual Game State Treating Current Match as Match 1**
-  // This ensures the AI always searches for match 1 in the game_tree.json
   const virtualGame = {
     ...game,
     currentMatch: 1, // Treat any current match as match 1 for AI's search
-    // Filter selections and guesses to include only the current match's data
-    coinSelections: game.coinSelections.filter(cs => cs.match === game.currentMatch),
-    guesses: game.guesses.filter(g => g.match === game.currentMatch),
+    // **Use virtualGame.currentMatch for filtering**
+    coinSelections: game.coinSelections.filter(cs => cs.match === 1),
+    guesses: game.guesses.filter(g => g.match === 1),
   };
 
   // **Build the Current State Signature**
