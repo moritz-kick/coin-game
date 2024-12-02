@@ -8,7 +8,7 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
-import { Slider } from "@/components/ui/slider";
+// import { Slider } from "@/components/ui/slider"; // Commented out
 import {
   Dialog,
   DialogContent,
@@ -16,7 +16,7 @@ import {
   DialogTitle,
   DialogFooter,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@/components/ui/dialog"; // Commented out
 import ImageSwiper from "@/components/ui/swiper";
 import { useAppContext } from "@/context/AppContext";
 import { toast } from "sonner";
@@ -25,8 +25,8 @@ import gameInviteImage from "@/images/gameinvite.png";
 import { API, showErrorToast } from "@/lib/utils";
 
 export default function Home() {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedMatches, setSelectedMatches] = useState([3]); // Default to 3 matches
+  // const [isDialogOpen, setIsDialogOpen] = useState(false); // Commented out
+  // const [selectedMatches, setSelectedMatches] = useState([3]); // Default to 3 matches // Commented out
   const [confirmUsername, setConfirmUsername] = useState("");
   const [newUsername, setNewUsername] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
@@ -36,7 +36,7 @@ export default function Home() {
 
   /**
    * Handles the "Play Against AI" button click.
-   * Opens the dialog to select the number of matches.
+   * Initiates the AI game with one match.
    */
   const handlePlayAI = async () => {
     if (!user) {
@@ -44,16 +44,18 @@ export default function Home() {
       navigate("/login");
       return;
     }
-    setIsDialogOpen(true);
+    await startAIGame(1); // Directly start game with 1 match
+    // setIsDialogOpen(true); // Commented out
   };
 
   /**
-   * Initiates the AI game with the selected number of matches.
+   * Initiates the AI game with the specified number of matches.
+   * @param {number} matches - Number of matches to play
    */
-  const startAIGame = async () => {
+  const startAIGame = async (matches) => {
     try {
       const { data } = await API().post("/game/create-ai-game", {
-        matches: selectedMatches[0],
+        matches, // Set to 1
         aiDifficulty: "Standard",
       });
 
@@ -66,9 +68,8 @@ export default function Home() {
     } catch (error) {
       console.error("Error starting AI game:", error.response?.data || error.message || error);
       toast.error(error.response?.data?.error || "Failed to start AI game. Please try again.");
-    } finally {
-      setIsDialogOpen(false);
     }
+    // setIsDialogOpen(false); // Commented out
   };
 
   /**
@@ -122,39 +123,39 @@ export default function Home() {
           </p>
           <div className="mt-4 space-x-4">
             {/* Play Against AI */}
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={handlePlayAI}>Play Against AI</Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                  <DialogTitle>Select Number of Matches</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-6">
-                  {/* Matches Slider */}
-                  <div>
-                    <label className="block mb-2 font-medium">
-                      Number of Matches: {selectedMatches[0]}
-                    </label>
-                    <Slider
-                      min={1}
-                      max={10}
-                      step={1}
-                      value={selectedMatches}
-                      onValueChange={(value) => setSelectedMatches(value)}
-                    />
-                  </div>
-                </div>
-                <DialogFooter className="mt-6 space-x-2">
-                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={startAIGame} disabled={selectedMatches[0] < 1}>
-                    Start Game
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            {/* <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}> // Commented out */}
+            {/* <DialogTrigger asChild> */}
+            <Button onClick={handlePlayAI}>Play Against AI</Button>
+            {/* </DialogTrigger> */}
+            {/* <DialogContent className="sm:max-w-[425px]"> */}
+            {/*   <DialogHeader> */}
+            {/*     <DialogTitle>Select Number of Matches</DialogTitle> */}
+            {/*   </DialogHeader> */}
+            {/*   <div className="space-y-6"> */}
+            {/* Matches Slider */}
+            {/* <div> */}
+            {/*   <label className="block mb-2 font-medium"> */}
+            {/*     Number of Matches: {selectedMatches[0]} */}
+            {/*   </label> */}
+            {/*   <Slider */}
+            {/*     min={1} */}
+            {/*     max={10} */}
+            {/*     step={1} */}
+            {/*     value={selectedMatches} */}
+            {/*     onValueChange={(value) => setSelectedMatches(value)} */}
+            {/*   /> */}
+            {/* </div> */}
+            {/*   </div> */}
+            {/*   <DialogFooter className="mt-6 space-x-2"> */}
+            {/*     <Button variant="outline" onClick={() => setIsDialogOpen(false)}> */}
+            {/*       Cancel */}
+            {/*     </Button> */}
+            {/*     <Button onClick={startAIGame} disabled={selectedMatches[0] < 1}> */}
+            {/*       Start Game */}
+            {/*     </Button> */}
+            {/*   </DialogFooter> */}
+            {/* </DialogContent> */}
+            {/* </Dialog> */}
 
             {/* Play Against a Friend */}
             <Button asChild>

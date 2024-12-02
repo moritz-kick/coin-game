@@ -281,18 +281,56 @@ export default function GameVsAI() {
       setGuess(null);
       setSubmitted(false);
 
-      // Display the result message
+      // Display the result message with last moves
       const myUserId = user._id;
-      const lastMatchWinner =
-        game.matchWinners[game.matchWinners.length - 1];
+      const lastMatchWinner = game.matchWinners[game.matchWinners.length - 1];
 
       if (!lastMatchWinner) return;
 
-      if (lastMatchWinner.winner === myUserId) {
-        toast("You Won");
+      // Determine the last match number
+      const lastMatchNumber = lastMatchWinner.match;
+
+      // Extract the last round of the last match
+      const lastRoundNumber = game.rounds; // Assuming rounds are sequential and fixed per match
+      const lastCoinSelection = game.coinSelections.find(
+        (cs) => cs.match === lastMatchNumber && cs.round === lastRoundNumber
+      )?.coins;
+      const lastGuess = game.guesses.find(
+        (g) => g.match === lastMatchNumber && g.round === lastRoundNumber
+      )?.guess;
+
+      // Determine who made the last moves based on roles
+      const playerRole =
+        game.player1._id === myUserId
+          ? game.player1Role
+          : game.player2Role;
+      const aiRole =
+        game.player1._id === "AI" ? game.player1Role : game.player2Role;
+
+      // Construct the message
+      let message = "";
+      if (lastMatchWinner.winner.toString() === myUserId.toString()) {
+        message += "You Won the Match!\n";
+        if (playerRole === "coin-player") {
+          message += `Your last move: Selected ${lastCoinSelection} coins.\n`;
+          message += `AI's last guess: ${lastGuess}.`;
+        } else {
+          message += `AI's last move: Selected ${lastCoinSelection} coins.\n`;
+          message += `Your last guess: ${lastGuess}.`;
+        }
       } else {
-        toast("You Lose");
+        message += "You Lost the Match.\n";
+        if (playerRole === "coin-player") {
+          message += `Your last move: Selected ${lastCoinSelection} coins.\n`;
+          message += `AI's last guess: ${lastGuess}.`;
+        } else {
+          message += `AI's last move: Selected ${lastCoinSelection} coins.\n`;
+          message += `Your last guess: ${lastGuess}.`;
+        }
       }
+
+      // Display the message using toast
+      toast(message);
     });
 
     /**
@@ -494,7 +532,9 @@ export default function GameVsAI() {
     }
   };
 
-  // Extract previous round data
+  /**
+   * Extract previous round data
+   */
   const previousRound = gameState ? gameState.currentRound - 1 : null;
 
   const previousCoinSelection =
